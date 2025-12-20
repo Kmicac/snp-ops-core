@@ -2,10 +2,16 @@ import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import { ProvidersService } from "../application/providers.service";
 import { CreateProviderDto } from "./dto/create-provider.dto";
 import { CreateProviderServiceDto } from "./dto/create-provider-service.dto";
+import { UseGuards } from "@nestjs/common";
+import { JwtAuthGuard } from "../../auth/security/jwt-auth.guard";
+import { Roles } from "../../auth/security/roles.decorator";
+import { RolesGuard } from "../../auth/security/roles.guard";
+import { OrgRole } from "@prisma/client";
+
 
 @Controller()
 export class ProvidersController {
-  constructor(private readonly service: ProvidersService) {}
+  constructor(private readonly service: ProvidersService) { }
 
   // Providers
   @Post("/orgs/:orgId/providers")
@@ -25,6 +31,12 @@ export class ProvidersController {
   }
 
   // Provider Services (por evento)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.TECH_SYSTEMS,
+  )
   @Post("/orgs/:orgId/events/:eventId/providers/:providerId/services")
   createProviderService(
     @Param("orgId") orgId: string,

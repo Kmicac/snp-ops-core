@@ -3,6 +3,11 @@ import { ConfigModule } from '@nestjs/config';
 import { PrismaService } from './shared/prisma/prisma.service';
 import { EventsModule } from './modules/events/events.module';
 import { ProvidersModule } from "./modules/providers/providers.module";
+import { WorkOrdersModule } from "./modules/work-orders/work-orders.module";
+import { KpisModule } from "./modules/kpis/kpis.module";
+import { AuthModule } from "./modules/auth/auth.module";
+
+
 
 
 @Module({
@@ -10,6 +15,9 @@ import { ProvidersModule } from "./modules/providers/providers.module";
   ConfigModule.forRoot({ isGlobal: true }),
   EventsModule,
   ProvidersModule,
+  WorkOrdersModule,
+  KpisModule,
+  AuthModule
 ],
   providers: [PrismaService],
 })
