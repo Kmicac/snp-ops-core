@@ -25,15 +25,44 @@ enum ServiceCategory {
   OTHER
 }
 
+enum OrgRole {
+  SUPER_ADMIN
+  HR
+  EVENT_DIRECTOR
+  HEAD_REFEREE
+  TECH_SYSTEMS
+  GUADA
+}
+
+enum StaffRole {
+  STAFF
+  SECURITY
+  LOGISTICS
+  CLEANING
+  REFEREE
+  MEDIC
+  PRODUCTION
+  TICKETING
+  OTHER
+}
+
+enum CredentialStatus {
+  ACTIVE
+  REVOKED
+}
+
+// CORE MODELS
+
 model Organization {
   id        String   @id @default(cuid())
   name      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  events     Event[]
-  providers  Provider[]
-  memberships OrgMembership[]
+  events       Event[]
+  providers    Provider[]
+  memberships  OrgMembership[]
+  staffMembers StaffMember[]
 }
 
 model Venue {
@@ -45,25 +74,31 @@ model Venue {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  events    Event[]
+  events Event[]
 }
 
 model Event {
-  id               String   @id @default(cuid())
-  organizationId   String
-  code             String   @unique
-  name             String
-  startDate        DateTime?
-  endDate          DateTime?
-  venueId          String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id             String   @id @default(cuid())
+  organizationId String
+  code           String   @unique
+  name           String
+  startDate      DateTime?
+  endDate        DateTime?
+  venueId        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization     Organization @relation(fields: [organizationId], references: [id])
-  venue            Venue? @relation(fields: [venueId], references: [id])
+  organization     Organization     @relation(fields: [organizationId], references: [id])
+  venue            Venue?            @relation(fields: [venueId], references: [id])
   zones            Zone[]
   providerServices ProviderService[]
   workOrders       WorkOrder[]
+
+
+  shifts       Shift[]
+  assignments  StaffAssignment[]
+  credentials  Credential[]
+  scanLogs     ScanLog[]
 
   @@index([organizationId])
 }
@@ -76,11 +111,15 @@ model Zone {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  event      Event @relation(fields: [eventId], references: [id])
-  workOrders WorkOrder[]
+  event       Event      @relation(fields: [eventId], references: [id])
+  workOrders  WorkOrder[]
+  assignments StaffAssignment[]
+  scanLogs    ScanLog[]
 
   @@index([eventId])
 }
+
+// PROVIDERS
 
 model Provider {
   id             String   @id @default(cuid())
@@ -92,8 +131,8 @@ model Provider {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  services       ProviderService[]
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  services     ProviderService[]
 
   @@index([organizationId])
 }
@@ -110,14 +149,17 @@ model ProviderService {
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
-  provider    Provider @relation(fields: [providerId], references: [id])
-  event       Event    @relation(fields: [eventId], references: [id])
-  workOrders  WorkOrder[]
+  provider   Provider   @relation(fields: [providerId], references: [id])
+  event      Event      @relation(fields: [eventId], references: [id])
+  workOrders WorkOrder[]
 
   @@index([eventId])
   @@index([providerId])
   @@unique([providerId, eventId, name])
 }
+
+
+// WORK ORDERS
 
 model WorkOrder {
   id                String          @id @default(cuid())
@@ -130,18 +172,18 @@ model WorkOrder {
   scheduledEndAt    DateTime?
   status            WorkOrderStatus @default(SCHEDULED)
 
-  acceptedAt        DateTime?
-  startedAt         DateTime?
-  completedAt       DateTime?
-  delayedAt         DateTime?
+  acceptedAt  DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  delayedAt   DateTime?
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  event            Event           @relation(fields: [eventId], references: [id])
-  zone             Zone?           @relation(fields: [zoneId], references: [id])
-  providerService  ProviderService @relation(fields: [providerServiceId], references: [id])
-  evidences        WorkOrderEvidence[]
+  event           Event           @relation(fields: [eventId], references: [id])
+  zone            Zone?           @relation(fields: [zoneId], references: [id])
+  providerService ProviderService @relation(fields: [providerServiceId], references: [id])
+  evidences       WorkOrderEvidence[]
 
   @@index([eventId, status])
   @@index([providerServiceId])
@@ -156,19 +198,14 @@ model WorkOrderEvidence {
   note        String?
   createdAt   DateTime @default(now())
 
-  workOrder   WorkOrder @relation(fields: [workOrderId], references: [id])
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id])
 
   @@index([workOrderId])
 }
 
-enum OrgRole {
-  SUPER_ADMIN
-  HR
-  EVENT_DIRECTOR
-  HEAD_REFEREE
-  TECH_SYSTEMS
-  GUADA
-}
+
+// AUTH / RBAC
+
 
 model User {
   id           String   @id @default(cuid())
@@ -179,7 +216,8 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  memberships  OrgMembership[]
+  memberships OrgMembership[]
+  scanLogs    ScanLog[] @relation("ScanLogScannerUser")
 }
 
 model OrgMembership {
@@ -189,10 +227,107 @@ model OrgMembership {
   role           OrgRole
   createdAt      DateTime @default(now())
 
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  user           User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
 
   @@unique([organizationId, userId, role])
   @@index([organizationId])
   @@index([userId])
+}
+
+
+// STAFF / SHIFTS / CREDENTIALS / SCANS
+
+
+model StaffMember {
+  id             String   @id @default(cuid())
+  organizationId String
+  fullName       String
+  documentId     String?
+  phone          String?
+  email          String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization     @relation(fields: [organizationId], references: [id])
+  assignments  StaffAssignment[]
+  credentials  Credential[]
+
+  @@index([organizationId])
+}
+
+model Shift {
+  id        String   @id @default(cuid())
+  eventId   String
+  name      String
+  startsAt  DateTime
+  endsAt    DateTime
+  createdAt DateTime @default(now())
+
+  event       Event            @relation(fields: [eventId], references: [id])
+  assignments StaffAssignment[]
+
+  @@index([eventId])
+}
+
+model StaffAssignment {
+  id           String    @id @default(cuid())
+  eventId       String
+  staffMemberId String
+  role          StaffRole
+  zoneId        String?
+  shiftId       String?
+  startsAt      DateTime?
+  endsAt        DateTime?
+  createdAt     DateTime @default(now())
+
+  event       Event       @relation(fields: [eventId], references: [id])
+  staffMember StaffMember @relation(fields: [staffMemberId], references: [id])
+  zone        Zone?       @relation(fields: [zoneId], references: [id])
+  shift       Shift?      @relation(fields: [shiftId], references: [id])
+
+  @@index([eventId])
+  @@index([staffMemberId])
+  @@index([zoneId])
+  @@index([shiftId])
+}
+
+model Credential {
+  id           String           @id @default(cuid())
+  eventId       String
+  staffMemberId String
+  status        CredentialStatus @default(ACTIVE)
+  qrToken       String           @unique
+  issuedAt      DateTime         @default(now())
+  revokedAt     DateTime?
+
+  event       Event       @relation(fields: [eventId], references: [id])
+  staffMember StaffMember @relation(fields: [staffMemberId], references: [id])
+  scans       ScanLog[]
+
+  @@index([eventId])
+  @@index([staffMemberId])
+}
+
+model ScanLog {
+  id            String   @id @default(cuid())
+  credentialId  String?  // nullable para loguear tokens inválidos
+  eventId       String
+  zoneId        String?
+  scannerUserId String?
+  scannedAt     DateTime @default(now())
+  result        String
+  reason        String?
+
+  credential    Credential? @relation(fields: [credentialId], references: [id])
+  event         Event       @relation(fields: [eventId], references: [id])
+  zone          Zone?       @relation(fields: [zoneId], references: [id])
+
+  scannerUser   User?       @relation("ScanLogScannerUser", fields: [scannerUserId], references: [id])
+
+  @@index([eventId, scannedAt])
+  @@index([credentialId])
+  @@index([scannerUserId])
+  @@index([zoneId])
 }

@@ -5,6 +5,9 @@ import { AuthController } from "./api/auth.controller";
 import { AuthService } from "./application/auth.service";
 import { AuthRepo } from "./infrastructure/auth.repo";
 import { JwtStrategy } from "./security/jwt.strategy";
+import { APP_GUARD } from "@nestjs/core";
+import { JwtAuthGlobalGuard } from "../auth/security/jwt-auth-global.guard";
+import { RolesGuard } from "../auth/security/roles.guard";
 
 @Module({
   imports: [
@@ -14,7 +17,9 @@ import { JwtStrategy } from "./security/jwt.strategy";
     }),
   ],
   controllers: [AuthController],
-  providers: [PrismaService, AuthService, AuthRepo, JwtStrategy],
+  providers: [PrismaService, AuthService, AuthRepo, JwtStrategy, { provide: APP_GUARD, useClass: JwtAuthGlobalGuard },
+  { provide: APP_GUARD, useClass: RolesGuard },
+],
   exports: [JwtModule],
 })
 export class AuthModule {}
