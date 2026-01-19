@@ -7,7 +7,7 @@ import { ScanDto } from "./dto/scan.dto";
 
 @Controller()
 export class StaffController {
-  constructor(private readonly service: StaffService) {}
+  constructor(private readonly service: StaffService) { }
 
   @Post("/orgs/:orgId/staff")
   createStaff(@Param("orgId") orgId: string, @Body() dto: CreateStaffDto) {
@@ -57,5 +57,14 @@ export class StaffController {
   @Post("/orgs/:orgId/events/:eventId/scan")
   scan(@Param("orgId") orgId: string, @Param("eventId") eventId: string, @Body() dto: ScanDto) {
     return this.service.scan(orgId, eventId, dto);
+  }
+
+  @Post("/orgs/:orgId/events/:eventId/credentials/:credentialId/revoke")
+  revokeCredential(
+    @Param("orgId") orgId: string,
+    @Param("eventId") eventId: string,
+    @Param("credentialId") credentialId: string,
+  ) {
+    return this.service.revokeCredential(orgId, eventId, credentialId);
   }
 }

@@ -51,6 +51,31 @@ enum CredentialStatus {
   REVOKED
 }
 
+enum AuditEntityType {
+  ORGANIZATION
+  EVENT
+  PROVIDER
+  PROVIDER_SERVICE
+  WORK_ORDER
+  WORK_ORDER_EVIDENCE
+  STAFF_MEMBER
+  STAFF_ASSIGNMENT
+  SHIFT
+  CREDENTIAL
+  SCAN_LOG
+  USER
+}
+
+enum AuditActionType {
+  CREATED
+  UPDATED
+  DELETED
+  STATUS_CHANGED
+  LOGIN
+  LOGOUT
+  OTHER
+}
+
 // CORE MODELS
 
 model Organization {
@@ -63,6 +88,7 @@ model Organization {
   providers    Provider[]
   memberships  OrgMembership[]
   staffMembers StaffMember[]
+  auditLogs   AuditLog[]
 }
 
 model Venue {
@@ -99,6 +125,8 @@ model Event {
   assignments  StaffAssignment[]
   credentials  Credential[]
   scanLogs     ScanLog[]
+  auditLogs    AuditLog[]
+
 
   @@index([organizationId])
 }
@@ -218,6 +246,8 @@ model User {
 
   memberships OrgMembership[]
   scanLogs    ScanLog[] @relation("ScanLogScannerUser")
+  auditLogs    AuditLog[]
+
 }
 
 model OrgMembership {
@@ -330,4 +360,28 @@ model ScanLog {
   @@index([credentialId])
   @@index([scannerUserId])
   @@index([zoneId])
+}
+
+model AuditLog {
+  id             String          @id @default(cuid())
+  organizationId String?
+  eventId        String?
+  userId         String?
+  entityType     AuditEntityType
+  entityId       String
+  action         AuditActionType
+  message        String?
+  changes        Json?
+  ip             String?
+  userAgent      String?
+  createdAt      DateTime        @default(now())
+
+  organization   Organization?   @relation(fields: [organizationId], references: [id])
+  event          Event?          @relation(fields: [eventId], references: [id])
+  user           User?           @relation(fields: [userId], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([eventId, createdAt])
+  @@index([userId, createdAt])
+  @@index([entityType, entityId])
 }

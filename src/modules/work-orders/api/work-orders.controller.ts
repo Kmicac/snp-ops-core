@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
 import { WorkOrderStatus } from "@prisma/client";
 import { WorkOrdersService } from "../application/work-orders.service";
 import { AddEvidenceDto } from "./dto/add-evidence.dto";
@@ -7,7 +7,7 @@ import { UpdateWorkOrderStatusDto } from "./dto/update-work-order-status.dto";
 
 @Controller()
 export class WorkOrdersController {
-  constructor(private readonly service: WorkOrdersService) {}
+  constructor(private readonly service: WorkOrdersService) { }
 
   // Crear WO: depende de un ProviderService (servicio contratado) dentro del evento
   @Post("/orgs/:orgId/events/:eventId/provider-services/:providerServiceId/work-orders")
@@ -54,13 +54,21 @@ export class WorkOrdersController {
     @Param("eventId") eventId: string,
     @Param("workOrderId") workOrderId: string,
     @Body() dto: UpdateWorkOrderStatusDto,
+    @Req() req: any,
   ) {
+    const userId = req.user?.sub ?? null;
+    const ip = req.ip ?? null;
+    const userAgent = req.headers["user-agent"] ?? null;
+
     return this.service.updateStatus({
       organizationId: orgId,
       eventId,
       workOrderId,
       nextStatus: dto.status,
       note: dto.note,
+      performedByUserId: userId,
+      ip,
+      userAgent: typeof userAgent === "string" ? userAgent : null,
     });
   }
 

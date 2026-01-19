@@ -3,7 +3,7 @@ import { PrismaService } from "../../../shared/prisma/prisma.service";
 
 @Injectable()
 export class StaffRepo {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   assertEventInOrg(eventId: string, organizationId: string) {
     return this.prisma.event.findFirstOrThrow({
@@ -70,7 +70,14 @@ export class StaffRepo {
     });
   }
 
-  logScan(data: any) {
+  logScan(data: {
+    eventId: string;
+    credentialId: string | null;
+    zoneId?: string | null;
+    scannerUserId?: string | null;
+    result: string;
+    reason?: string | null;
+  }) {
     return this.prisma.scanLog.create({ data });
   }
 
@@ -79,6 +86,31 @@ export class StaffRepo {
       where: { eventId },
       include: { staffMember: true },
       orderBy: [{ issuedAt: "desc" }],
+    });
+  }
+
+
+  assertZoneInEvent(zoneId: string, eventId: string) {
+    return this.prisma.zone.findFirstOrThrow({
+      where: { id: zoneId, eventId },
+      select: { id: true },
+    });
+  }
+
+  assertShiftInEvent(shiftId: string, eventId: string) {
+    return this.prisma.shift.findFirstOrThrow({
+      where: { id: shiftId, eventId },
+      select: { id: true },
+    });
+  }
+
+  revokeCredential(credentialId: string) {
+    return this.prisma.credential.update({
+      where: { id: credentialId },
+      data: {
+        status: "REVOKED",
+        revokedAt: new Date(),
+      },
     });
   }
 }

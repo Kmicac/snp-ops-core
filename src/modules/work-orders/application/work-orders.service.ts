@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { WorkOrderStatus } from "@prisma/client";
 import { assertWorkOrderTransition } from "../domain/work-order.transitions";
 import { WorkOrdersRepo } from "../infrastructure/work-orders.repo";
+import { AuditService } from "src/modules/audit/application/audit.service";
 
 function computeDelayMinutes(scheduledEndAt: Date | null, completedAt: Date | null, now: Date) {
   if (!scheduledEndAt) return null;
@@ -13,7 +14,10 @@ function computeDelayMinutes(scheduledEndAt: Date | null, completedAt: Date | nu
 
 @Injectable()
 export class WorkOrdersService {
-  constructor(private readonly repo: WorkOrdersRepo) {}
+  constructor(
+    private readonly repo: WorkOrdersRepo,
+    private readonly audit: AuditService,
+  ) { }
 
   async create(params: {
     organizationId: string;
@@ -67,9 +71,7 @@ export class WorkOrdersService {
     await this.repo.assertEventInOrg(params.eventId, params.organizationId);
     const wo = await this.repo.getByIdOrThrow(params.workOrderId);
 
-    // hard-scope: que el WO sea del event
     if (wo.eventId !== params.eventId) {
-      // evitamos filtrar ids entre eventos
       throw new Error("Work order not in event scope");
     }
 
@@ -83,6 +85,9 @@ export class WorkOrdersService {
     workOrderId: string;
     nextStatus: WorkOrderStatus;
     note?: string;
+    performedByUserId?: string | null;
+    ip?: string | null;
+    userAgent?: string | null;
   }) {
     await this.repo.assertEventInOrg(params.eventId, params.organizationId);
 
@@ -97,15 +102,29 @@ export class WorkOrdersService {
       now: new Date(),
     });
 
-    // Trazabilidad pro: siempre registramos el cambio
     await this.repo.addEvidence({
       workOrderId: current.id,
       type: "status_change",
-      note: `Status: ${current.status} -> ${params.nextStatus}` + (params.note ? ` | ${params.note}` : ""),
+      note:
+        `Status: ${current.status} -> ${params.nextStatus}` +
+        (params.note ? ` | ${params.note}` : ""),
+    });
+
+    await this.audit.logWorkOrderStatusChange({
+      organizationId: params.organizationId,
+      eventId: params.eventId,
+      workOrderId: current.id,
+      fromStatus: current.status,
+      toStatus: params.nextStatus,
+      userId: params.performedByUserId ?? null,
+      note: params.note,
+      ip: params.ip,
+      userAgent: params.userAgent,
     });
 
     return updated;
   }
+
 
   async addEvidence(params: {
     organizationId: string;

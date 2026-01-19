@@ -7,6 +7,7 @@ import { WorkOrdersModule } from "./modules/work-orders/work-orders.module";
 import { KpisModule } from "./modules/kpis/kpis.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { StaffModule } from './modules/staff/staff.module';
+import { AuditModule } from './modules/audit/audit.module';
 
 
 
@@ -20,7 +21,8 @@ import { StaffModule } from './modules/staff/staff.module';
   WorkOrdersModule,
   KpisModule,
   AuthModule,
-  StaffModule
+  StaffModule,
+  AuditModule,
 ],
   providers: [PrismaService],
 })

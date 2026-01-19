@@ -4,7 +4,7 @@ import { generateQrToken } from "../domain/qr-token";
 
 @Injectable()
 export class StaffService {
-  constructor(private readonly repo: StaffRepo) {}
+  constructor(private readonly repo: StaffRepo) { }
 
   createStaff(orgId: string, dto: any) {
     return this.repo.createStaff(orgId, {
@@ -36,6 +36,14 @@ export class StaffService {
   async assignStaff(orgId: string, eventId: string, staffId: string, dto: any) {
     await this.repo.assertEventInOrg(eventId, orgId);
     await this.repo.getStaffOrThrow(staffId, orgId);
+
+    if (dto.zoneId) {
+      await this.repo.assertZoneInEvent(dto.zoneId, eventId);
+    }
+
+    if (dto.shiftId) {
+      await this.repo.assertShiftInEvent(dto.shiftId, eventId);
+    }
 
     return this.repo.createAssignment({
       eventId,
@@ -73,19 +81,49 @@ export class StaffService {
     await this.repo.assertEventInOrg(eventId, orgId);
 
     const cred = await this.repo.findCredentialByToken(eventId, dto.qrToken);
-    const now = new Date();
 
     if (!cred) {
-      await this.repo.logScan({ eventId, credentialId: null, zoneId: dto.zoneId ?? null, result: "DENY", reason: "INVALID_TOKEN" });
+      await this.repo.logScan({
+        eventId,
+        credentialId: null,
+        zoneId: dto.zoneId ?? null,
+        scannerUserId: null,
+        result: "DENY",
+        reason: "INVALID_TOKEN",
+      });
       throw new BadRequestException("Invalid QR");
     }
 
     if (cred.status !== "ACTIVE") {
-      await this.repo.logScan({ eventId, credentialId: cred.id, zoneId: dto.zoneId ?? null, result: "DENY", reason: "REVOKED" });
+      await this.repo.logScan({
+        eventId,
+        credentialId: cred.id,
+        zoneId: dto.zoneId ?? null,
+        scannerUserId: null,
+        result: "DENY",
+        reason: "REVOKED",
+      });
       return { allow: false, reason: "REVOKED", staff: cred.staffMember };
     }
 
-    await this.repo.logScan({ eventId, credentialId: cred.id, zoneId: dto.zoneId ?? null, result: "ALLOW", reason: null });
+    await this.repo.logScan({
+      eventId,
+      credentialId: cred.id,
+      zoneId: dto.zoneId ?? null,
+      scannerUserId: null,
+      result: "ALLOW",
+      reason: null,
+    });
+
     return { allow: true, staff: cred.staffMember };
   }
+
+  async revokeCredential(orgId: string, eventId: string, credentialId: string) {
+    await this.repo.assertEventInOrg(eventId, orgId);
+
+    const cred = await this.repo.revokeCredential(credentialId);
+    
+    return cred;
+  }
+
 }
