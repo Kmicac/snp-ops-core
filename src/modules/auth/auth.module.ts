@@ -5,21 +5,22 @@ import { AuthController } from "./api/auth.controller";
 import { AuthService } from "./application/auth.service";
 import { AuthRepo } from "./infrastructure/auth.repo";
 import { JwtStrategy } from "./security/jwt.strategy";
-import { APP_GUARD } from "@nestjs/core";
-import { JwtAuthGlobalGuard } from "../auth/security/jwt-auth-global.guard";
-import { RolesGuard } from "../auth/security/roles.guard";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { AppEnv } from "../../config/env";
 
 @Module({
   imports: [
-    JwtModule.register({
-      secret: process.env.JWT_SECRET ?? "dev_secret_change_me",
-      signOptions: { expiresIn: "12h" },
+    ConfigModule,
+    JwtModule.registerAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<AppEnv>) => ({
+        secret: config.get("JWT_SECRET", { infer: true }),
+        signOptions: { expiresIn: config.get("JWT_EXPIRES_IN", { infer: true }) },
+      }),
     }),
   ],
   controllers: [AuthController],
-  providers: [PrismaService, AuthService, AuthRepo, JwtStrategy, { provide: APP_GUARD, useClass: JwtAuthGlobalGuard },
-  { provide: APP_GUARD, useClass: RolesGuard },
-],
+  providers: [PrismaService, AuthService, AuthRepo, JwtStrategy],
   exports: [JwtModule],
 })
 export class AuthModule {}

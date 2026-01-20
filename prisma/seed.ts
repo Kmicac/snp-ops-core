@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import bcrypt from "bcrypt";
 
 function createPrisma() {
   const connectionString = process.env.DATABASE_URL;
@@ -14,7 +15,7 @@ function createPrisma() {
 const prisma = createPrisma();
 
 async function main() {
-  const orgName = "Santonegro Producciones";
+  const orgName = "Santo Negro Producciones";
   const eventCode = "ADCC_LATAM_2025";
 
   const org = await prisma.organization.upsert({
@@ -77,7 +78,50 @@ async function main() {
     });
   }
 
-  console.log("Seed OK:", { org: org.id, event: event.id, venue: venue.id });
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPlainPassword = process.env.ADMIN_INITIAL_PASSWORD;
+
+  if (!adminEmail || !adminPlainPassword) {
+    throw new Error(
+      "ADMIN_EMAIL y ADMIN_INITIAL_PASSWORD son obligatorias para crear el SUPER_ADMIN (defínelas en .env)",
+    );
+  }
+
+  const passwordHash = await bcrypt.hash(adminPlainPassword, 12);
+
+  const adminUser = await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {},
+    create: {
+      email: adminEmail,
+      passwordHash,
+      fullName: "Administrador SNP",
+      isActive: true,
+    },
+  });
+
+  await prisma.orgMembership.upsert({
+    where: {
+      organizationId_userId_role: {
+        organizationId: org.id,
+        userId: adminUser.id,
+        role: "SUPER_ADMIN",
+      },
+    },
+    update: {},
+    create: {
+      organizationId: org.id,
+      userId: adminUser.id,
+      role: "SUPER_ADMIN",
+    },
+  });
+
+  console.log("Seed OK:", {
+    org: org.id,
+    event: event.id,
+    venue: venue.id,
+    superAdminEmail: adminEmail,
+  });
 }
 
 main()

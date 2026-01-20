@@ -76,6 +76,34 @@ enum AuditActionType {
   OTHER
 }
 
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  CLOSED
+}
+
+enum ImprovementType {
+  IMPROVEMENT
+  INNOVATION
+  PROCESS
+}
+
+enum ImprovementStatus {
+  PROPOSED
+  APPROVED
+  IN_PROGRESS
+  IMPLEMENTED
+  REJECTED
+}
+
 // CORE MODELS
 
 model Organization {
@@ -88,7 +116,8 @@ model Organization {
   providers    Provider[]
   memberships  OrgMembership[]
   staffMembers StaffMember[]
-  auditLogs   AuditLog[]
+  auditLogs    AuditLog[]
+  improvements Improvement[]
 }
 
 model Venue {
@@ -104,29 +133,29 @@ model Venue {
 }
 
 model Event {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
-  code           String   @unique
+  code           String    @unique
   name           String
   startDate      DateTime?
   endDate        DateTime?
   venueId        String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  organization     Organization     @relation(fields: [organizationId], references: [id])
+  organization     Organization      @relation(fields: [organizationId], references: [id])
   venue            Venue?            @relation(fields: [venueId], references: [id])
   zones            Zone[]
   providerServices ProviderService[]
   workOrders       WorkOrder[]
-
 
   shifts       Shift[]
   assignments  StaffAssignment[]
   credentials  Credential[]
   scanLogs     ScanLog[]
   auditLogs    AuditLog[]
-
+  incidents    Incident[]
+  improvements Improvement[]
 
   @@index([organizationId])
 }
@@ -139,10 +168,11 @@ model Zone {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  event       Event      @relation(fields: [eventId], references: [id])
+  event       Event             @relation(fields: [eventId], references: [id])
   workOrders  WorkOrder[]
   assignments StaffAssignment[]
   scanLogs    ScanLog[]
+  incidents   Incident[]
 
   @@index([eventId])
 }
@@ -159,7 +189,7 @@ model Provider {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization     @relation(fields: [organizationId], references: [id])
+  organization Organization      @relation(fields: [organizationId], references: [id])
   services     ProviderService[]
 
   @@index([organizationId])
@@ -174,18 +204,17 @@ model ProviderService {
   slaMinutes         Int?
   windowSlackMinutes Int?
   notes              String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
-  provider   Provider   @relation(fields: [providerId], references: [id])
-  event      Event      @relation(fields: [eventId], references: [id])
+  provider   Provider    @relation(fields: [providerId], references: [id])
+  event      Event       @relation(fields: [eventId], references: [id])
   workOrders WorkOrder[]
 
+  @@unique([providerId, eventId, name])
   @@index([eventId])
   @@index([providerId])
-  @@unique([providerId, eventId, name])
 }
-
 
 // WORK ORDERS
 
@@ -208,9 +237,9 @@ model WorkOrder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  event           Event           @relation(fields: [eventId], references: [id])
-  zone            Zone?           @relation(fields: [zoneId], references: [id])
-  providerService ProviderService @relation(fields: [providerServiceId], references: [id])
+  event           Event               @relation(fields: [eventId], references: [id])
+  zone            Zone?               @relation(fields: [zoneId], references: [id])
+  providerService ProviderService     @relation(fields: [providerServiceId], references: [id])
   evidences       WorkOrderEvidence[]
 
   @@index([eventId, status])
@@ -231,9 +260,7 @@ model WorkOrderEvidence {
   @@index([workOrderId])
 }
 
-
 // AUTH / RBAC
-
 
 model User {
   id           String   @id @default(cuid())
@@ -245,9 +272,11 @@ model User {
   updatedAt    DateTime @updatedAt
 
   memberships OrgMembership[]
-  scanLogs    ScanLog[] @relation("ScanLogScannerUser")
-  auditLogs    AuditLog[]
+  scanLogs    ScanLog[]       @relation("ScanLogScannerUser")
+  auditLogs   AuditLog[]
 
+  incidents    Incident[]
+  improvements Improvement[]
 }
 
 model OrgMembership {
@@ -265,9 +294,7 @@ model OrgMembership {
   @@index([userId])
 }
 
-
 // STAFF / SHIFTS / CREDENTIALS / SCANS
-
 
 model StaffMember {
   id             String   @id @default(cuid())
@@ -280,7 +307,7 @@ model StaffMember {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  organization Organization     @relation(fields: [organizationId], references: [id])
+  organization Organization      @relation(fields: [organizationId], references: [id])
   assignments  StaffAssignment[]
   credentials  Credential[]
 
@@ -295,14 +322,14 @@ model Shift {
   endsAt    DateTime
   createdAt DateTime @default(now())
 
-  event       Event            @relation(fields: [eventId], references: [id])
+  event       Event             @relation(fields: [eventId], references: [id])
   assignments StaffAssignment[]
 
   @@index([eventId])
 }
 
 model StaffAssignment {
-  id           String    @id @default(cuid())
+  id            String    @id @default(cuid())
   eventId       String
   staffMemberId String
   role          StaffRole
@@ -310,7 +337,7 @@ model StaffAssignment {
   shiftId       String?
   startsAt      DateTime?
   endsAt        DateTime?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime  @default(now())
 
   event       Event       @relation(fields: [eventId], references: [id])
   staffMember StaffMember @relation(fields: [staffMemberId], references: [id])
@@ -324,7 +351,7 @@ model StaffAssignment {
 }
 
 model Credential {
-  id           String           @id @default(cuid())
+  id            String           @id @default(cuid())
   eventId       String
   staffMemberId String
   status        CredentialStatus @default(ACTIVE)
@@ -342,7 +369,7 @@ model Credential {
 
 model ScanLog {
   id            String   @id @default(cuid())
-  credentialId  String?  // nullable para loguear tokens inválidos
+  credentialId  String? // nullable para loguear tokens inválidos
   eventId       String
   zoneId        String?
   scannerUserId String?
@@ -350,11 +377,11 @@ model ScanLog {
   result        String
   reason        String?
 
-  credential    Credential? @relation(fields: [credentialId], references: [id])
-  event         Event       @relation(fields: [eventId], references: [id])
-  zone          Zone?       @relation(fields: [zoneId], references: [id])
+  credential Credential? @relation(fields: [credentialId], references: [id])
+  event      Event       @relation(fields: [eventId], references: [id])
+  zone       Zone?       @relation(fields: [zoneId], references: [id])
 
-  scannerUser   User?       @relation("ScanLogScannerUser", fields: [scannerUserId], references: [id])
+  scannerUser User? @relation("ScanLogScannerUser", fields: [scannerUserId], references: [id])
 
   @@index([eventId, scannedAt])
   @@index([credentialId])
@@ -376,12 +403,78 @@ model AuditLog {
   userAgent      String?
   createdAt      DateTime        @default(now())
 
-  organization   Organization?   @relation(fields: [organizationId], references: [id])
-  event          Event?          @relation(fields: [eventId], references: [id])
-  user           User?           @relation(fields: [userId], references: [id])
+  organization Organization? @relation(fields: [organizationId], references: [id])
+  event        Event?        @relation(fields: [eventId], references: [id])
+  user         User?         @relation(fields: [userId], references: [id])
 
   @@index([organizationId, createdAt])
   @@index([eventId, createdAt])
   @@index([userId, createdAt])
   @@index([entityType, entityId])
+}
+
+model Incident {
+  id           String           @id @default(cuid())
+  eventId      String
+  zoneId       String?
+  reportedById String?
+  title        String
+  description  String
+  severity     IncidentSeverity
+  status       IncidentStatus   @default(OPEN)
+  occurredAt   DateTime?
+  resolvedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event      Event @relation(fields: [eventId], references: [id])
+  zone       Zone? @relation(fields: [zoneId], references: [id])
+  reportedBy User? @relation(fields: [reportedById], references: [id])
+
+  improvements Improvement[]
+  evidences    IncidentEvidence[]
+
+  @@index([eventId])
+  @@index([status])
+  @@index([severity])
+}
+
+model IncidentEvidence {
+  id         String   @id @default(cuid())
+  incidentId String
+  type       String
+  url        String?
+  note       String?
+  createdAt  DateTime @default(now())
+
+  incident Incident @relation(fields: [incidentId], references: [id])
+
+  @@index([incidentId])
+}
+
+model Improvement {
+  id             String  @id @default(cuid())
+  organizationId String
+  eventId        String?
+  incidentId     String?
+  createdById    String?
+
+  title       String
+  description String
+  type        ImprovementType
+  status      ImprovementStatus @default(PROPOSED)
+  priority    Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  event        Event?       @relation(fields: [eventId], references: [id])
+  incident     Incident?    @relation(fields: [incidentId], references: [id])
+  createdBy    User?        @relation(fields: [createdById], references: [id])
+
+  @@index([organizationId])
+  @@index([status])
+  @@index([type])
 }

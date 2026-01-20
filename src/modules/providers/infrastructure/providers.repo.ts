@@ -5,7 +5,6 @@ import { PrismaService } from "../../../shared/prisma/prisma.service";
 export class ProvidersRepo {
   constructor(private readonly prisma: PrismaService) {}
 
-  // Providers (scoped a organización)
   createProvider(params: {
     organizationId: string;
     name: string;
@@ -37,7 +36,6 @@ export class ProvidersRepo {
     });
   }
 
-  // ProviderService (scoped a evento)
   async assertEventInOrg(eventId: string, organizationId: string) {
     await this.prisma.event.findFirstOrThrow({
       where: { id: eventId, organizationId },
@@ -70,7 +68,6 @@ export class ProvidersRepo {
   }
 
   listProviderServices(params: { organizationId: string; eventId: string }) {
-    // filtra por evento, pero además garantizamos pertenencia del evento a la org en service
     return this.prisma.providerService.findMany({
       where: { eventId: params.eventId },
       orderBy: [{ category: "asc" }, { name: "asc" }],

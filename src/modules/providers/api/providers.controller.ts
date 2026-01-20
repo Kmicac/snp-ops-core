@@ -13,7 +13,7 @@ import { OrgRole } from "@prisma/client";
 export class ProvidersController {
   constructor(private readonly service: ProvidersService) { }
 
-  // Providers
+  @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS)
   @Post("/orgs/:orgId/providers")
   createProvider(@Param("orgId") orgId: string, @Body() dto: CreateProviderDto) {
     return this.service.createProvider({
@@ -30,13 +30,8 @@ export class ProvidersController {
     return this.service.listProviders(orgId);
   }
 
-  // Provider Services (por evento)
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(
-    OrgRole.SUPER_ADMIN,
-    OrgRole.EVENT_DIRECTOR,
-    OrgRole.TECH_SYSTEMS,
-  )
+  @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
   @Post("/orgs/:orgId/events/:eventId/providers/:providerId/services")
   createProviderService(
     @Param("orgId") orgId: string,

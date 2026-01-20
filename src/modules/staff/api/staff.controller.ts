@@ -4,11 +4,14 @@ import { CreateStaffDto } from "./dto/create-staff.dto";
 import { CreateShiftDto } from "./dto/create-shift.dto";
 import { CreateAssignmentDto } from "./dto/create-assignment.dto";
 import { ScanDto } from "./dto/scan.dto";
+import { Roles } from "src/modules/auth/security/roles.decorator";
+import { OrgRole } from "@prisma/client";
 
 @Controller()
 export class StaffController {
   constructor(private readonly service: StaffService) { }
 
+  @Roles(OrgRole.SUPER_ADMIN, OrgRole.HR, OrgRole.EVENT_DIRECTOR)
   @Post("/orgs/:orgId/staff")
   createStaff(@Param("orgId") orgId: string, @Body() dto: CreateStaffDto) {
     return this.service.createStaff(orgId, dto);
@@ -29,6 +32,7 @@ export class StaffController {
     return this.service.listShifts(orgId, eventId);
   }
 
+  @Roles(OrgRole.SUPER_ADMIN, OrgRole.HR, OrgRole.EVENT_DIRECTOR)
   @Post("/orgs/:orgId/events/:eventId/staff/:staffId/assignments")
   assignStaff(
     @Param("orgId") orgId: string,
@@ -44,6 +48,7 @@ export class StaffController {
     return this.service.listAssignments(orgId, eventId);
   }
 
+  @Roles(OrgRole.SUPER_ADMIN, OrgRole.HR, OrgRole.EVENT_DIRECTOR)
   @Post("/orgs/:orgId/events/:eventId/staff/:staffId/credentials")
   issueCredential(@Param("orgId") orgId: string, @Param("eventId") eventId: string, @Param("staffId") staffId: string) {
     return this.service.issueCredential(orgId, eventId, staffId);
@@ -59,6 +64,7 @@ export class StaffController {
     return this.service.scan(orgId, eventId, dto);
   }
 
+  @Roles(OrgRole.SUPER_ADMIN, OrgRole.HR, OrgRole.EVENT_DIRECTOR)
   @Post("/orgs/:orgId/events/:eventId/credentials/:credentialId/revoke")
   revokeCredential(
     @Param("orgId") orgId: string,

@@ -1,15 +1,17 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
-import { WorkOrderStatus } from "@prisma/client";
+import { OrgRole, WorkOrderStatus } from "@prisma/client";
 import { WorkOrdersService } from "../application/work-orders.service";
 import { AddEvidenceDto } from "./dto/add-evidence.dto";
 import { CreateWorkOrderDto } from "./dto/create-work-order.dto";
 import { UpdateWorkOrderStatusDto } from "./dto/update-work-order-status.dto";
+import { Roles } from "src/modules/auth/security/roles.decorator";
 
 @Controller()
 export class WorkOrdersController {
   constructor(private readonly service: WorkOrdersService) { }
 
-  // Crear WO: depende de un ProviderService (servicio contratado) dentro del evento
+  // Depende de un ProviderService (servicio contratado) dentro del evento
+  @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
   @Post("/orgs/:orgId/events/:eventId/provider-services/:providerServiceId/work-orders")
   create(
     @Param("orgId") orgId: string,
@@ -48,6 +50,7 @@ export class WorkOrdersController {
     return this.service.get({ organizationId: orgId, eventId, workOrderId });
   }
 
+  @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
   @Patch("/orgs/:orgId/events/:eventId/work-orders/:workOrderId/status")
   updateStatus(
     @Param("orgId") orgId: string,
