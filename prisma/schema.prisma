@@ -107,6 +107,34 @@ enum ImprovementStatus {
   REJECTED
 }
 
+enum PartnershipStatus {
+  PROSPECT   // posible partner, en evaluación
+  ACTIVE     // partner vigente
+  INACTIVE   // no vigente, histórico
+}
+
+enum SponsorshipTier {
+  TITLE
+  GOLD
+  SILVER
+  BRONZE
+  SUPPORT
+}
+
+enum SponsorshipStatus {
+  PROPOSED
+  NEGOTIATION
+  CONFIRMED
+  CANCELED
+}
+
+enum PartnerSponsorApplicationStatus {
+  RECEIVED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
 // CORE MODELS
 
 model Organization {
@@ -121,6 +149,11 @@ model Organization {
   staffMembers StaffMember[]
   auditLogs    AuditLog[]
   improvements Improvement[]
+
+  brands                     Brand[]
+  partnerships               Partnership[]
+  sponsorships               Sponsorship[]
+  partnerSponsorApplications PartnerSponsorApplication[]
 }
 
 model Venue {
@@ -159,6 +192,8 @@ model Event {
   auditLogs    AuditLog[]
   incidents    Incident[]
   improvements Improvement[]
+
+  sponsorships Sponsorship[]
 
   @@index([organizationId])
 }
@@ -280,6 +315,9 @@ model User {
 
   incidents    Incident[]
   improvements Improvement[]
+
+  // lado inverso de PartnerSponsorApplication.reviewedBy
+  reviewedApplications PartnerSponsorApplication[]
 }
 
 model OrgMembership {
@@ -480,4 +518,108 @@ model Improvement {
   @@index([organizationId])
   @@index([status])
   @@index([type])
+}
+
+model Brand {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  logoUrl        String?
+  websiteUrl     String?
+  instagramUrl   String?
+  contactName    String?
+  contactEmail   String?
+  contactPhone   String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  partnerships Partnership[]
+  sponsorships Sponsorship[]
+
+  @@index([organizationId])
+  @@unique([organizationId, name])
+}
+
+model Partnership {
+  id             String            @id @default(cuid())
+  organizationId String
+  brandId        String
+
+  imageUrl       String?           // imagen pública del partner
+  status         PartnershipStatus @default(PROSPECT)
+  startDate      DateTime?
+  endDate        DateTime?
+  scope          String?
+  benefits       String?
+  notes          String?
+
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  brand        Brand        @relation(fields: [brandId], references: [id])
+
+  @@index([organizationId])
+  @@index([brandId])
+}
+
+model Sponsorship {
+  id             String            @id @default(cuid())
+  organizationId String
+  eventId        String
+  brandId        String
+
+  imageUrl       String?           // imagen pública del sponsor para el evento
+  tier           SponsorshipTier
+  status         SponsorshipStatus @default(PROPOSED)
+
+  cashValue      Int?
+  inKindValue    Int?
+  benefits       String?
+  notes          String?
+
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  event        Event        @relation(fields: [eventId], references: [id])
+  brand        Brand        @relation(fields: [brandId], references: [id])
+
+  @@index([organizationId])
+  @@index([eventId])
+  @@index([brandId])
+  @@index([tier])
+}
+
+model PartnerSponsorApplication {
+  id             String                         @id @default(cuid())
+  organizationId String
+
+  companyName    String
+  contactName    String
+  email          String
+  phone          String?
+  websiteUrl     String?
+  instagramUrl   String?
+
+  wantsPartner     Boolean
+  wantsSponsor     Boolean
+  preferredEventId String?
+
+  message        String?
+
+  status       PartnerSponsorApplicationStatus @default(RECEIVED)
+  reviewedById String?
+  reviewedAt   DateTime?
+  reviewNotes  String?
+
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  reviewedBy   User?        @relation(fields: [reviewedById], references: [id])
+
+  @@index([organizationId])
+  @@index([status])
 }

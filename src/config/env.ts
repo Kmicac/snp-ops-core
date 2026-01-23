@@ -11,6 +11,11 @@ export const envSchema = z.object({
 
   ADMIN_EMAIL: z.string().email().optional(),
   ADMIN_INITIAL_PASSWORD: z.string().min(12).optional(),
+
+  AWS_REGION: z.string().optional(),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  S3_BUCKET_PARTNER_ASSETS: z.string().optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

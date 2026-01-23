@@ -14,6 +14,7 @@ import { ImprovementsModule } from "./modules/improvements/improvements.module";
 import { APP_GUARD } from "@nestjs/core";
 import { JwtAuthGlobalGuard } from "./modules/auth/security/jwt-auth-global.guard";
 import { RolesGuard } from "./modules/auth/security/roles.guard";
+import { PartnersModule } from "./modules/partners/partners.module";
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { RolesGuard } from "./modules/auth/security/roles.guard";
     AuditModule,
     KpisModule,
     ImprovementsModule,
+    PartnersModule
   ],
   providers: [PrismaService,
     { provide: APP_GUARD, useClass: JwtAuthGlobalGuard },
