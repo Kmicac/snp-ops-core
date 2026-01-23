@@ -64,6 +64,7 @@ enum AuditEntityType {
   CREDENTIAL
   SCAN_LOG
   USER
+  INCIDENT
 }
 
 enum AuditActionType {
@@ -74,6 +75,7 @@ enum AuditActionType {
   LOGIN
   LOGOUT
   OTHER
+  EVIDENCE_ADDED
 }
 
 enum IncidentSeverity {
