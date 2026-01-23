@@ -9,6 +9,7 @@ import { StaffModule } from "./modules/staff/staff.module";
 import { AuditModule } from "./modules/audit/audit.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { KpisModule } from "./modules/kpis/kpis.module";
+import { ImprovementsModule } from "./modules/improvements/improvements.module";
 
 import { APP_GUARD } from "@nestjs/core";
 import { JwtAuthGlobalGuard } from "./modules/auth/security/jwt-auth-global.guard";
@@ -29,6 +30,7 @@ import { RolesGuard } from "./modules/auth/security/roles.guard";
     StaffModule,
     AuditModule,
     KpisModule,
+    ImprovementsModule,
   ],
   providers: [PrismaService,
     { provide: APP_GUARD, useClass: JwtAuthGlobalGuard },

@@ -65,6 +65,7 @@ enum AuditEntityType {
   SCAN_LOG
   USER
   INCIDENT
+  IMPROVEMENT
 }
 
 enum AuditActionType {
