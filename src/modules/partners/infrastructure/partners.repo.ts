@@ -170,4 +170,49 @@ export class PartnersRepo {
       ],
     });
   }
+
+  async getEventSponsorStats(eventId: string, organizationId: string) {
+    const whereBase = {
+      eventId,
+      organizationId,
+      status: SponsorshipStatus.CONFIRMED,
+    } as const;
+
+    const totals = await this.prisma.sponsorship.aggregate({
+      where: whereBase,
+      _sum: {
+        cashValue: true,
+        inKindValue: true,
+      },
+      _count: true,
+    });
+
+    const byTier = await this.prisma.sponsorship.groupBy({
+      by: ["tier"],
+      where: whereBase,
+      _sum: {
+        cashValue: true,
+        inKindValue: true,
+      },
+      _count: true,
+    });
+
+    return { totals, byTier };
+  }
+
+  async listPublicPartners(organizationId: string) {
+    // Para la web pública, mostramos sólo ACTIVE
+    return this.prisma.partnership.findMany({
+      where: {
+        organizationId,
+        status: PartnershipStatus.ACTIVE,
+      },
+      include: {
+        brand: true,
+      },
+      orderBy: [
+        { createdAt: "asc" },
+      ],
+    });
+  }
 }

@@ -116,6 +116,10 @@ export class PartnersService {
                     inKindValue: number | null;
                     benefits: string | null;
                     notes: string | null;
+                    links: {
+                        instagram: string | null;
+                        website: string | null;
+                    };
                 }>;
             }
         > = {} as any;
@@ -134,6 +138,11 @@ export class PartnersService {
                 inKindValue: s.inKindValue,
                 benefits: s.benefits,
                 notes: s.notes,
+                links: {
+                    instagram: s.brand.instagramUrl,
+                    website: s.brand.websiteUrl,
+                },
+
             });
         }
 
@@ -149,4 +158,43 @@ export class PartnersService {
             .filter((t) => byTier[t])
             .map((t) => byTier[t]);
     }
+
+    async getEventSponsorKpis(organizationId: string, eventId: string) {
+        const { totals, byTier } = await this.repo.getEventSponsorStats(
+            eventId,
+            organizationId,
+        );
+
+        return {
+            totalSponsors: totals._count,
+            totalCashValue: totals._sum.cashValue ?? 0,
+            totalInKindValue: totals._sum.inKindValue ?? 0,
+            byTier: byTier.map((t) => ({
+                tier: t.tier,
+                count: t._count,
+                cashValue: t._sum.cashValue ?? 0,
+                inKindValue: t._sum.inKindValue ?? 0,
+            })),
+        };
+    }
+
+    async getPublicPartners(organizationId: string) {
+        const partners = await this.repo.listPublicPartners(organizationId);
+
+        return partners.map((p) => ({
+            id: p.id,
+            brandId: p.brandId,
+            brandName: p.brand.name,
+            brandLogoUrl: p.brand.logoUrl,
+            imageUrl: p.imageUrl,
+            status: p.status,
+            scope: p.scope,
+            benefits: p.benefits,
+            links: {
+                instagram: p.brand.instagramUrl,
+                website: p.brand.websiteUrl,
+            },
+        }));
+    }
+
 }

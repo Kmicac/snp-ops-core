@@ -137,4 +137,24 @@ export class PartnersController {
     ) {
         return this.service.getEventSponsorsByTier(orgId, eventId);
     }
+
+    @Roles(
+        OrgRole.SUPER_ADMIN,
+        OrgRole.EVENT_DIRECTOR,
+        OrgRole.TECH_SYSTEMS,
+        OrgRole.GUADA,
+    )
+    @Get("orgs/:orgId/events/:eventId/sponsors/kpis")
+    getEventSponsorKpis(
+        @Param("orgId") orgId: string,
+        @Param("eventId") eventId: string,
+    ) {
+        return this.service.getEventSponsorKpis(orgId, eventId);
+    }
+
+    @Public()
+    @Get("public/orgs/:orgId/partners")
+    getPublicPartners(@Param("orgId") orgId: string) {
+        return this.service.getPublicPartners(orgId);
+    }
 }
