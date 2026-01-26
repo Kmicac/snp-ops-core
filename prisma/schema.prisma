@@ -135,6 +135,24 @@ enum PartnerSponsorApplicationStatus {
   REJECTED
 }
 
+enum AssetStatus {
+  IN_STORAGE   
+  IN_USE       
+  DAMAGED      
+  UNDER_REPAIR 
+  LOST         
+  RETIRED     
+}
+
+enum AssetCondition {
+  NEW
+  GOOD
+  FAIR
+  POOR
+  BROKEN
+}
+
+
 // CORE MODELS
 
 model Organization {
@@ -154,6 +172,9 @@ model Organization {
   partnerships               Partnership[]
   sponsorships               Sponsorship[]
   partnerSponsorApplications PartnerSponsorApplication[]
+
+  assetCategories AssetCategory[]
+  assets          Asset[]
 }
 
 model Venue {
@@ -194,6 +215,7 @@ model Event {
   improvements Improvement[]
 
   sponsorships Sponsorship[]
+  assetUsages  AssetUsage[]
 
   @@index([organizationId])
 }
@@ -211,6 +233,8 @@ model Zone {
   assignments StaffAssignment[]
   scanLogs    ScanLog[]
   incidents   Incident[]
+
+  assetUsages AssetUsage[]
 
   @@index([eventId])
 }
@@ -351,6 +375,8 @@ model StaffMember {
   organization Organization      @relation(fields: [organizationId], references: [id])
   assignments  StaffAssignment[]
   credentials  Credential[]
+
+  assetUsages  AssetUsage[]
 
   @@index([organizationId])
 }
@@ -623,3 +649,80 @@ model PartnerSponsorApplication {
   @@index([organizationId])
   @@index([status])
 }
+
+model AssetCategory {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  assets       Asset[]
+
+  @@index([organizationId])
+  @@unique([organizationId, name])
+}
+
+model Asset {
+  id             String         @id @default(cuid())
+  organizationId String
+  categoryId     String?
+
+  name           String         
+  assetTag       String?         // código interno / etiqueta
+  serialNumber   String?         
+  description    String?
+
+  status         AssetStatus     @default(IN_STORAGE)
+  condition      AssetCondition  @default(GOOD)
+
+  quantity       Int             @default(1) // para cosas no individuales (ej: cables)
+  purchaseDate   DateTime?
+  purchasePrice  Int?            
+  location       String?         // "Depósito central", "Oficina", etc.
+  notes          String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization  @relation(fields: [organizationId], references: [id])
+  category     AssetCategory? @relation(fields: [categoryId], references: [id])
+
+  usages       AssetUsage[]
+
+  @@index([organizationId])
+  @@index([categoryId])
+  @@index([status])
+}
+
+model AssetUsage {
+  id            String          @id @default(cuid())
+  assetId       String
+  eventId       String?
+  zoneId        String?
+  staffMemberId String?
+
+  quantity      Int             @default(1)   // cuántas unidades de ese asset se usan
+  checkoutAt    DateTime        @default(now())
+  expectedReturnAt DateTime?
+  returnedAt    DateTime?
+
+  conditionOut  AssetCondition? // cómo salió
+  conditionIn   AssetCondition? // cómo volvió
+
+  notes         String?
+
+  asset       Asset       @relation(fields: [assetId], references: [id])
+  event       Event?      @relation(fields: [eventId], references: [id])
+  zone        Zone?       @relation(fields: [zoneId], references: [id])
+  staffMember StaffMember? @relation(fields: [staffMemberId], references: [id])
+
+  @@index([assetId])
+  @@index([eventId])
+  @@index([zoneId])
+  @@index([staffMemberId])
+}
+
