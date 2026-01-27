@@ -108,9 +108,9 @@ enum ImprovementStatus {
 }
 
 enum PartnershipStatus {
-  PROSPECT   // posible partner, en evaluación
-  ACTIVE     // partner vigente
-  INACTIVE   // no vigente, histórico
+  PROSPECT   
+  ACTIVE    
+  INACTIVE   
 }
 
 enum SponsorshipTier {
@@ -141,7 +141,7 @@ enum AssetStatus {
   DAMAGED      
   UNDER_REPAIR 
   LOST         
-  RETIRED     
+  RETIRED      
 }
 
 enum AssetCondition {
@@ -151,7 +151,6 @@ enum AssetCondition {
   POOR
   BROKEN
 }
-
 
 // CORE MODELS
 
@@ -168,13 +167,18 @@ model Organization {
   auditLogs    AuditLog[]
   improvements Improvement[]
 
+  // sponsors / partners
   brands                     Brand[]
   partnerships               Partnership[]
   sponsorships               Sponsorship[]
   partnerSponsorApplications PartnerSponsorApplication[]
 
+  // inventario
   assetCategories AssetCategory[]
   assets          Asset[]
+
+  // trainings
+  trainings Training[]
 }
 
 model Venue {
@@ -215,7 +219,11 @@ model Event {
   improvements Improvement[]
 
   sponsorships Sponsorship[]
-  assetUsages  AssetUsage[]
+
+  assetUsages AssetUsage[]
+
+  tatamis   Tatami[]
+  trainings Training[]
 
   @@index([organizationId])
 }
@@ -299,9 +307,9 @@ model WorkOrder {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  event           Event               @relation(fields: [eventId], references: [id])
-  zone            Zone?               @relation(fields: [zoneId], references: [id])
-  providerService ProviderService     @relation(fields: [providerServiceId], references: [id])
+  event           Event           @relation(fields: [eventId], references: [id])
+  zone            Zone?           @relation(fields: [zoneId], references: [id])
+  providerService ProviderService @relation(fields: [providerServiceId], references: [id])
   evidences       WorkOrderEvidence[]
 
   @@index([eventId, status])
@@ -370,13 +378,18 @@ model StaffMember {
   email          String?
   notes          String?
   createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  updatedAt      DateTime @default(now())
 
   organization Organization      @relation(fields: [organizationId], references: [id])
   assignments  StaffAssignment[]
   credentials  Credential[]
 
-  assetUsages  AssetUsage[]
+  assetUsages AssetUsage[]
+
+  refereeProfile RefereeProfile?
+  tatamiReferees TatamiReferee[]
+
+  trainingAttendees TrainingAttendee[]
 
   @@index([organizationId])
 }
@@ -436,7 +449,7 @@ model Credential {
 
 model ScanLog {
   id            String   @id @default(cuid())
-  credentialId  String? // nullable para loguear tokens inválidos
+  credentialId  String?
   eventId       String
   zoneId        String?
   scannerUserId String?
@@ -573,7 +586,7 @@ model Partnership {
   organizationId String
   brandId        String
 
-  imageUrl       String?           // imagen pública del partner
+  imageUrl       String?
   status         PartnershipStatus @default(PROSPECT)
   startDate      DateTime?
   endDate        DateTime?
@@ -597,7 +610,7 @@ model Sponsorship {
   eventId        String
   brandId        String
 
-  imageUrl       String?           // imagen pública del sponsor para el evento
+  imageUrl       String?
   tier           SponsorshipTier
   status         SponsorshipStatus @default(PROPOSED)
 
@@ -634,7 +647,7 @@ model PartnerSponsorApplication {
   wantsSponsor     Boolean
   preferredEventId String?
 
-  message        String?
+  message      String?
 
   status       PartnerSponsorApplicationStatus @default(RECEIVED)
   reviewedById String?
@@ -649,6 +662,8 @@ model PartnerSponsorApplication {
   @@index([organizationId])
   @@index([status])
 }
+
+// INVENTARIO
 
 model AssetCategory {
   id             String   @id @default(cuid())
@@ -671,24 +686,24 @@ model Asset {
   organizationId String
   categoryId     String?
 
-  name           String         
-  assetTag       String?         // código interno / etiqueta
-  serialNumber   String?         
+  name           String
+  assetTag       String?
+  serialNumber   String?
   description    String?
 
   status         AssetStatus     @default(IN_STORAGE)
   condition      AssetCondition  @default(GOOD)
 
-  quantity       Int             @default(1) // para cosas no individuales (ej: cables)
+  quantity       Int             @default(1)
   purchaseDate   DateTime?
-  purchasePrice  Int?            
-  location       String?         // "Depósito central", "Oficina", etc.
+  purchasePrice  Int?
+  location       String?
   notes          String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization  @relation(fields: [organizationId], references: [id])
+  organization Organization   @relation(fields: [organizationId], references: [id])
   category     AssetCategory? @relation(fields: [categoryId], references: [id])
 
   usages       AssetUsage[]
@@ -699,25 +714,25 @@ model Asset {
 }
 
 model AssetUsage {
-  id            String          @id @default(cuid())
+  id            String   @id @default(cuid())
   assetId       String
   eventId       String?
   zoneId        String?
   staffMemberId String?
 
-  quantity      Int             @default(1)   // cuántas unidades de ese asset se usan
-  checkoutAt    DateTime        @default(now())
+  quantity         Int      @default(1)
+  checkoutAt       DateTime @default(now())
   expectedReturnAt DateTime?
-  returnedAt    DateTime?
+  returnedAt       DateTime?
 
-  conditionOut  AssetCondition? // cómo salió
-  conditionIn   AssetCondition? // cómo volvió
+  conditionOut AssetCondition?
+  conditionIn  AssetCondition?
 
-  notes         String?
+  notes       String?
 
-  asset       Asset       @relation(fields: [assetId], references: [id])
-  event       Event?      @relation(fields: [eventId], references: [id])
-  zone        Zone?       @relation(fields: [zoneId], references: [id])
+  asset       Asset        @relation(fields: [assetId], references: [id])
+  event       Event?       @relation(fields: [eventId], references: [id])
+  zone        Zone?        @relation(fields: [zoneId], references: [id])
   staffMember StaffMember? @relation(fields: [staffMemberId], references: [id])
 
   @@index([assetId])
@@ -726,3 +741,84 @@ model AssetUsage {
   @@index([staffMemberId])
 }
 
+// REFEREES / TATAMIS
+
+model RefereeProfile {
+  id            String   @id @default(cuid())
+  staffMemberId String   @unique
+
+  level         String?
+  isHeadReferee Boolean  @default(false)
+  notes         String?
+
+  staffMember StaffMember @relation(fields: [staffMemberId], references: [id])
+}
+
+model Tatami {
+  id        String   @id @default(cuid())
+  eventId   String
+  name      String   // "Tatami 1", "Tatami 2"
+  order     Int      @default(0)
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  event    Event           @relation(fields: [eventId], references: [id])
+  referees TatamiReferee[]
+
+  @@index([eventId])
+}
+
+model TatamiReferee {
+  id            String   @id @default(cuid())
+  tatamiId      String
+  staffMemberId String
+  role          String   // "MAIN", "ASSISTANT", etc.
+  createdAt     DateTime @default(now())
+
+  tatami      Tatami      @relation(fields: [tatamiId], references: [id])
+  staffMember StaffMember @relation(fields: [staffMemberId], references: [id])
+
+  @@unique([tatamiId, staffMemberId])
+  @@index([staffMemberId])
+}
+
+// TRAININGS / CAPACITACIONES
+
+model Training {
+  id             String   @id @default(cuid())
+  organizationId String
+  eventId        String?
+  title          String
+  description    String?
+  location       String?
+  startsAt       DateTime
+  endsAt         DateTime
+  mandatory      Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  event        Event?       @relation(fields: [eventId], references: [id])
+  attendees    TrainingAttendee[]
+
+  @@index([organizationId])
+  @@index([eventId])
+}
+
+model TrainingAttendee {
+  id            String   @id @default(cuid())
+  trainingId    String
+  staffMemberId String
+  attended      Boolean  @default(false)
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  training    Training    @relation(fields: [trainingId], references: [id])
+  staffMember StaffMember @relation(fields: [staffMemberId], references: [id])
+
+  @@index([trainingId])
+  @@index([staffMemberId])
+  @@unique([trainingId, staffMemberId])
+}

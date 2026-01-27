@@ -16,6 +16,8 @@ import { JwtAuthGlobalGuard } from "./modules/auth/security/jwt-auth-global.guar
 import { RolesGuard } from "./modules/auth/security/roles.guard";
 import { PartnersModule } from "./modules/partners/partners.module";
 import { InventoryModule } from "./modules/inventory/inventory.module";
+import { RefereesModule } from "./modules/referees/referees.module";
+import { TrainingsModule } from "./modules/trainings/trainings.module";
 
 @Module({
   imports: [
@@ -35,6 +37,8 @@ import { InventoryModule } from "./modules/inventory/inventory.module";
     ImprovementsModule,
     PartnersModule,
     InventoryModule,
+    RefereesModule,
+    TrainingsModule,
   ],
   providers: [PrismaService,
     { provide: APP_GUARD, useClass: JwtAuthGlobalGuard },
