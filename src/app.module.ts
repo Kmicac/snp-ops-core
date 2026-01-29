@@ -10,19 +10,22 @@ import { AuditModule } from "./modules/audit/audit.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { KpisModule } from "./modules/kpis/kpis.module";
 import { ImprovementsModule } from "./modules/improvements/improvements.module";
-
-import { APP_GUARD } from "@nestjs/core";
-import { JwtAuthGlobalGuard } from "./modules/auth/security/jwt-auth-global.guard";
-import { RolesGuard } from "./modules/auth/security/roles.guard";
 import { PartnersModule } from "./modules/partners/partners.module";
 import { InventoryModule } from "./modules/inventory/inventory.module";
 import { RefereesModule } from "./modules/referees/referees.module";
 import { TrainingsModule } from "./modules/trainings/trainings.module";
+import { NotificationsModule } from "./modules/notifications/notifications.module";
+
+import { APP_GUARD } from "@nestjs/core";
+import { JwtAuthGlobalGuard } from "./modules/auth/security/jwt-auth-global.guard";
+import { RolesGuard } from "./modules/auth/security/roles.guard";
+import { notificationsConfig } from "./config/notifications.config";
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      load: [notificationsConfig],
       cache: true,
       validate: (raw) => validateEnv(raw),
     }),
@@ -39,6 +42,7 @@ import { TrainingsModule } from "./modules/trainings/trainings.module";
     InventoryModule,
     RefereesModule,
     TrainingsModule,
+    NotificationsModule,
   ],
   providers: [PrismaService,
     { provide: APP_GUARD, useClass: JwtAuthGlobalGuard },
