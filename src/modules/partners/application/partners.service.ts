@@ -4,10 +4,14 @@ import {
     SponsorshipTier,
 } from "@prisma/client";
 import { PartnersRepo } from "../infrastructure/partners.repo";
+import { FilesService } from "src/modules/files/files.service";
 
 @Injectable()
 export class PartnersService {
-    constructor(private readonly repo: PartnersRepo) { }
+    constructor(
+        private readonly repo: PartnersRepo,
+        private readonly files: FilesService,
+    ) { }
 
     createBrand(organizationId: string, data: {
         name: string;
@@ -197,4 +201,59 @@ export class PartnersService {
         }));
     }
 
+    async uploadBrandLogo(params: {
+        organizationId: string;
+        brandId: string;
+        file: Express.Multer.File;
+    }) {
+        const { organizationId, brandId, file } = params;
+
+        const brand = await this.repo.getBrandOrThrow(organizationId, brandId);
+
+        const uploaded = await this.files.uploadPublicFile({
+            buffer: file.buffer,
+            mimeType: file.mimetype,
+            originalName: file.originalname,
+            folder: `orgs/${organizationId}/brands/${brandId}`,
+        });
+
+        const updated = await this.repo.updateBrandLogo(
+            organizationId,
+            brandId,
+            uploaded.url,
+        );
+
+        return updated;
+    }
+
+    async uploadSponsorshipImage(params: {
+        organizationId: string;
+        eventId: string;
+        sponsorshipId: string;
+        file: Express.Multer.File;
+    }) {
+        const { organizationId, eventId, sponsorshipId, file } = params;
+
+        const sponsorship = await this.repo.getSponsorshipOrThrow({
+            organizationId,
+            eventId,
+            sponsorshipId,
+        });
+
+        const uploaded = await this.files.uploadPublicFile({
+            buffer: file.buffer,
+            mimeType: file.mimetype,
+            originalName: file.originalname,
+            folder: `orgs/${organizationId}/events/${eventId}/sponsors/${sponsorshipId}`,
+        });
+
+        const updated = await this.repo.updateSponsorshipImage({
+            organizationId,
+            eventId,
+            sponsorshipId,
+            imageUrl: uploaded.url,
+        });
+
+        return updated;
+    }
 }

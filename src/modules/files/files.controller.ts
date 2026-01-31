@@ -1,18 +1,14 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Body, Controller, Post, UploadedFile, UseInterceptors, BadRequestException } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
+import { memoryStorage } from "multer";
 import { FilesService } from "./files.service";
 import { IsString } from "class-validator";
 import { OrgRole } from "@prisma/client";
 import { Roles } from "../auth/security/roles.decorator";
 
-class GetUploadUrlDto {
+class UploadFileDto {
   @IsString()
-  folder!: string; // "brands" | "partners" | "sponsors"
-
-  @IsString()
-  fileName!: string;
-
-  @IsString()
-  contentType!: string; // "image/png", etc.
+  folder!: string; 
 }
 
 @Controller("files")
@@ -25,12 +21,18 @@ export class FilesController {
     OrgRole.TECH_SYSTEMS,
     OrgRole.GUADA,
   )
-  @Post("upload-url")
-  getUploadUrl(@Body() dto: GetUploadUrlDto) {
-    return this.files.getSignedUploadUrl({
-      keyPrefix: dto.folder,
-      fileName: dto.fileName,
-      contentType: dto.contentType,
+  @UseInterceptors(FileInterceptor("file", { storage: memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 }, }))
+  @Post("upload")
+  async uploadFile(@Body() dto: UploadFileDto, @UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException("file is required");
+    }
+
+    return this.files.uploadPublicFile({
+      buffer: file.buffer,
+      mimeType: file.mimetype,
+      originalName: file.originalname,
+      folder: dto.folder,
     });
   }
 }

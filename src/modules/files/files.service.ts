@@ -1,59 +1,95 @@
-import { Injectable, InternalServerErrorException } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { AppEnv } from "src/config/env";
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
+import { randomUUID } from "crypto";
+
+export type UploadedFileInfo = {
+  key: string;
+  url: string;
+};
 
 @Injectable()
 export class FilesService {
-  private s3: S3Client | null = null;
-  private bucket: string | null = null;
+  private readonly logger = new Logger(FilesService.name);
+  private readonly s3: S3Client;
+  private readonly bucket: string;
+  private readonly publicBaseUrl: string;
 
-  constructor(private readonly config: ConfigService<AppEnv, true>) {
-    const region = this.config.get("AWS_REGION");
-    const bucket = this.config.get("S3_BUCKET_PARTNER_ASSETS");
-    const accessKeyId = this.config.get("AWS_ACCESS_KEY_ID");
-    const secretAccessKey = this.config.get("AWS_SECRET_ACCESS_KEY");
+  constructor(private readonly config: ConfigService) {
+    const filesCfg = this.config.get<{
+      bucket: string;
+      region: string;
+      accessKeyId: string;
+      secretAccessKey: string;
+      endpoint?: string;
+      publicBaseUrl: string;
+    }>("files");
 
-    if (region && bucket && accessKeyId && secretAccessKey) {
-      this.s3 = new S3Client({
-        region,
-        credentials: {
-          accessKeyId,
-          secretAccessKey,
-        },
-      });
-      this.bucket = bucket;
+    if (!filesCfg) {
+      throw new Error("files config not loaded");
     }
+
+    this.bucket = filesCfg.bucket;
+    this.publicBaseUrl = filesCfg.publicBaseUrl;
+
+    this.s3 = new S3Client({
+      region: filesCfg.region,
+      credentials: {
+        accessKeyId: filesCfg.accessKeyId,
+        secretAccessKey: filesCfg.secretAccessKey,
+      },
+      endpoint: filesCfg.endpoint,
+      forcePathStyle: !!filesCfg.endpoint, // útil para MinIO/R2
+    });
   }
 
-  async getSignedUploadUrl(params: {
-    keyPrefix: string;      // ej: "brands", "sponsors", "partners"
-    fileName: string;       // ej: "logo.png"
-    contentType: string;    // ej: "image/png"
-    expiresInSeconds?: number;
-  }) {
-    if (!this.s3 || !this.bucket) {
-      throw new InternalServerErrorException(
-        "S3 is not configured on this environment",
-      );
-    }
+  private buildKey(folder: string, originalName: string): string {
+    const cleanFolder = folder.replace(/^\/+|\/+$/g, "");
+    const ext = originalName.split(".").pop();
+    const id = randomUUID();
+    return `${cleanFolder}/${id}.${ext ?? "bin"}`;
+  }
 
-    const key = `${params.keyPrefix}/${Date.now()}-${params.fileName}`;
+  private buildPublicUrl(key: string): string {
+    const base = this.publicBaseUrl.replace(/\/+$/, "");
+    return `${base}/${key}`;
+  }
 
-    const command = new PutObjectCommand({
-      Bucket: this.bucket,
-      Key: key,
-      ContentType: params.contentType,
-      ACL: "public-read",
-    });
+  async uploadPublicFile(params: {
+    buffer: Buffer;
+    mimeType: string;
+    originalName: string;
+    folder: string; // ej: "partners", "events/ADCC_LATAM_2025/sponsors"
+  }): Promise<UploadedFileInfo> {
+    const { buffer, mimeType, originalName, folder } = params;
+    const key = this.buildKey(folder, originalName);
 
-    const uploadUrl = await getSignedUrl(this.s3, command, {
-      expiresIn: params.expiresInSeconds ?? 600, // 10 min
-    });
+    await this.s3.send(
+      new PutObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: mimeType,
+        ACL: "public-read", // si usas ACLs públicas
+      }),
+    );
 
-    const fileUrl = `https://${this.bucket}.s3.${this.config.get("AWS_REGION")}.amazonaws.com/${key}`;
+    const url = this.buildPublicUrl(key);
+    this.logger.log(`Uploaded file to S3: ${key}`);
+    return { key, url };
+  }
 
-    return { uploadUrl, fileUrl };
+  async deleteFile(key: string): Promise<void> {
+    await this.s3.send(
+      new DeleteObjectCommand({
+        Bucket: this.bucket,
+        Key: key,
+      }),
+    );
+    this.logger.log(`Deleted file from S3: ${key}`);
   }
 }

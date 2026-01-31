@@ -20,12 +20,13 @@ import { APP_GUARD } from "@nestjs/core";
 import { JwtAuthGlobalGuard } from "./modules/auth/security/jwt-auth-global.guard";
 import { RolesGuard } from "./modules/auth/security/roles.guard";
 import { notificationsConfig } from "./config/notifications.config";
+import { filesConfig } from "./config/files.config";
 
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [notificationsConfig],
+      load: [notificationsConfig, filesConfig],
       cache: true,
       validate: (raw) => validateEnv(raw),
     }),

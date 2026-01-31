@@ -12,10 +12,13 @@ export const envSchema = z.object({
   ADMIN_EMAIL: z.string().email().optional(),
   ADMIN_INITIAL_PASSWORD: z.string().min(12).optional(),
 
-  AWS_REGION: z.string().optional(),
-  AWS_ACCESS_KEY_ID: z.string().optional(),
-  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  S3_REGION: z.string().optional(),
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
   S3_BUCKET_PARTNER_ASSETS: z.string().optional(),
+  S3_BUCKET_NAME: z.string().min(1),
+  S3_ENDPOINT: z.string().optional(),
+  S3_PUBLIC_BASE_URL: z.string().url().min(1),
 
   EMAIL_FROM: z.string().email().optional(),
   RESEND_API_KEY: z.string().optional()

@@ -14,7 +14,6 @@ import { PrismaService } from "src/shared/prisma/prisma.service";
 export class PartnersRepo {
   constructor(private readonly prisma: PrismaService) { }
 
-  // ------- Brands -------
 
   createBrand(data: {
     organizationId: string;
@@ -39,7 +38,6 @@ export class PartnersRepo {
     });
   }
 
-  // ------- Partnerships -------
 
   createPartnership(data: {
     organizationId: string;
@@ -70,8 +68,6 @@ export class PartnersRepo {
       orderBy: { createdAt: "desc" },
     });
   }
-
-  // ------- Sponsorships (Sponsors por evento) -------
 
   createSponsorship(data: {
     organizationId: string;
@@ -107,7 +103,6 @@ export class PartnersRepo {
     });
   }
 
-  // ------- Public applications -------
 
   createApplication(data: {
     organizationId: string;
@@ -213,6 +208,60 @@ export class PartnersRepo {
       orderBy: [
         { createdAt: "asc" },
       ],
+    });
+  }
+
+  async getBrandOrThrow(organizationId: string, brandId: string) {
+    return this.prisma.brand.findFirstOrThrow({
+      where: {
+        id: brandId,
+        organizationId,
+      },
+    });
+  }
+
+  async updateBrandLogo(
+    organizationId: string,
+    brandId: string,
+    logoUrl: string,
+  ) {
+    return this.prisma.brand.update({
+      where: { id: brandId },
+      data: {
+        logoUrl,
+        updatedAt: new Date(),
+      },
+    });
+  }
+
+  async getSponsorshipOrThrow(params: {
+    organizationId: string;
+    eventId: string;
+    sponsorshipId: string;
+  }) {
+    const { organizationId, eventId, sponsorshipId } = params;
+    return this.prisma.sponsorship.findFirstOrThrow({
+      where: {
+        id: sponsorshipId,
+        organizationId,
+        eventId,
+      },
+    });
+  }
+
+  async updateSponsorshipImage(params: {
+    organizationId: string;
+    eventId: string;
+    sponsorshipId: string;
+    imageUrl: string;
+  }) {
+    const { sponsorshipId, imageUrl } = params;
+    return this.prisma.sponsorship.update({
+      where: { id: sponsorshipId },
+      data: {
+        imageUrl,
+        updatedAt: new Date(),
+      },
     });
   }
 }

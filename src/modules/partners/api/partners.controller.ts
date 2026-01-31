@@ -7,6 +7,8 @@ import {
     Post,
     Query,
     Req,
+    UploadedFile,
+    UseInterceptors,
 } from "@nestjs/common";
 import { Request } from "express";
 import {
@@ -21,6 +23,7 @@ import { UpdateApplicationStatusDto } from "./dto/update-application-status.dto"
 import { Roles } from "../../auth/security/roles.decorator";
 import { Public } from "../../auth/security/public.decorator";
 import { CreatePartnershipDto } from "./dto/create-partnersihp.dto";
+import { FileInterceptor } from "@nestjs/platform-express";
 
 type AuthenticatedRequest = Request & { user?: { sub?: string } };
 
@@ -28,7 +31,6 @@ type AuthenticatedRequest = Request & { user?: { sub?: string } };
 export class PartnersController {
     constructor(private readonly service: PartnersService) { }
 
-    // ---------- Interno: Brands y Sponsors ----------
 
     @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
     @Post("orgs/:orgId/brands")
@@ -42,12 +44,7 @@ export class PartnersController {
         return this.service.listBrands(orgId);
     }
 
-    @Roles(
-        OrgRole.SUPER_ADMIN,
-        OrgRole.EVENT_DIRECTOR,
-        OrgRole.TECH_SYSTEMS,
-        OrgRole.GUADA,
-    )
+    @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
     @Post("orgs/:orgId/partners")
     createPartnership(
         @Param("orgId") orgId: string,
@@ -77,8 +74,6 @@ export class PartnersController {
         return this.service.listSponsorsForEvent(eventId);
     }
 
-    // ---------- Público: ver Partners/Sponsors & aplicar ----------
-
     @Public()
     @Get("public/orgs/:orgId/brands")
     publicListBrands(@Param("orgId") orgId: string) {
@@ -100,7 +95,6 @@ export class PartnersController {
         return this.service.createApplication(orgId, dto);
     }
 
-    // ---------- Interno: revisar aplicaciones ----------
 
     @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.HR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
     @Get("orgs/:orgId/partner-sponsor-applications")
@@ -138,12 +132,7 @@ export class PartnersController {
         return this.service.getEventSponsorsByTier(orgId, eventId);
     }
 
-    @Roles(
-        OrgRole.SUPER_ADMIN,
-        OrgRole.EVENT_DIRECTOR,
-        OrgRole.TECH_SYSTEMS,
-        OrgRole.GUADA,
-    )
+    @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
     @Get("orgs/:orgId/events/:eventId/sponsors/kpis")
     getEventSponsorKpis(
         @Param("orgId") orgId: string,
@@ -156,5 +145,45 @@ export class PartnersController {
     @Get("public/orgs/:orgId/partners")
     getPublicPartners(@Param("orgId") orgId: string) {
         return this.service.getPublicPartners(orgId);
+    }
+
+    @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
+    @Post("orgs/:orgId/brands/:brandId/logo")
+    @UseInterceptors(
+        FileInterceptor("file", {
+            limits: { fileSize: 5 * 1024 * 1024 },
+        }),
+    )
+    async uploadBrandLogo(
+        @Param("orgId") orgId: string,
+        @Param("brandId") brandId: string,
+        @UploadedFile() file: Express.Multer.File,
+    ) {
+        return this.service.uploadBrandLogo({
+            organizationId: orgId,
+            brandId,
+            file,
+        });
+    }
+
+    @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
+    @Post("orgs/:orgId/events/:eventId/sponsors/:sponsorshipId/image")
+    @UseInterceptors(
+        FileInterceptor("file", {
+            limits: { fileSize: 5 * 1024 * 1024 },
+        }),
+    )
+    async uploadSponsorshipImage(
+        @Param("orgId") orgId: string,
+        @Param("eventId") eventId: string,
+        @Param("sponsorshipId") sponsorshipId: string,
+        @UploadedFile() file: Express.Multer.File,
+    ) {
+        return this.service.uploadSponsorshipImage({
+            organizationId: orgId,
+            eventId,
+            sponsorshipId,
+            file,
+        });
     }
 }
