@@ -18,7 +18,12 @@ export class WorkOrdersController {
     @Param("eventId") eventId: string,
     @Param("providerServiceId") providerServiceId: string,
     @Body() dto: CreateWorkOrderDto,
+    @Req() req: any,
   ) {
+    const userId = req.user?.sub ?? null;
+    const ip = req.ip ?? null;
+    const userAgent = req.headers["user-agent"] ?? null;
+
     return this.service.create({
       organizationId: orgId,
       eventId,
@@ -28,6 +33,9 @@ export class WorkOrdersController {
       zoneId: dto.zoneId,
       scheduledStartAt: dto.scheduledStartAt,
       scheduledEndAt: dto.scheduledEndAt,
+      performedByUserId: userId,
+      ip,
+      userAgent: typeof userAgent === "string" ? userAgent : null,
     });
   }
 
@@ -98,7 +106,12 @@ export class WorkOrdersController {
     @Param("eventId") eventId: string,
     @Param("workOrderId") workOrderId: string,
     @Body() dto: AddEvidenceDto,
+    @Req() req: any,
   ) {
+    const userId = req.user?.sub ?? null;
+    const ip = req.ip ?? null;
+    const userAgent = req.headers["user-agent"] ?? null;
+
     return this.service.addEvidence({
       organizationId: orgId,
       eventId,
@@ -106,6 +119,9 @@ export class WorkOrdersController {
       type: dto.type,
       url: dto.url,
       note: dto.note,
+      performedByUserId: userId,
+      ip,
+      userAgent: typeof userAgent === "string" ? userAgent : null,
     });
   }
 }

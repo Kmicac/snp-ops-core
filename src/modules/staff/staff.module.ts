@@ -3,8 +3,10 @@ import { PrismaService } from "../../shared/prisma/prisma.service";
 import { StaffController } from "./api/staff.controller";
 import { StaffService } from "./application/staff.service";
 import { StaffRepo } from "./infrastructure/staff.repo";
+import { AuditModule } from "../audit/audit.module";
 
 @Module({
+  imports: [AuditModule],
   controllers: [StaffController],
   providers: [PrismaService, StaffService, StaffRepo],
 })

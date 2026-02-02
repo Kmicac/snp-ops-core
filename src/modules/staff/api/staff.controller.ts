@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
 import { StaffService } from "../application/staff.service";
 import { CreateStaffDto } from "./dto/create-staff.dto";
 import { CreateShiftDto } from "./dto/create-shift.dto";
@@ -124,6 +124,27 @@ export class StaffController {
   @Post("/orgs/:orgId/events/:eventId/scan")
   scan(@Param("orgId") orgId: string, @Param("eventId") eventId: string, @Body() dto: ScanDto) {
     return this.service.scan(orgId, eventId, dto);
+  }
+
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
+  @Get("/orgs/:orgId/events/:eventId/scan-logs")
+  listScanLogs(
+    @Param("orgId") orgId: string,
+    @Param("eventId") eventId: string,
+    @Query("zoneId") zoneId?: string,
+    @Query("result") result?: string,
+    @Query("limit") limit?: string,
+  ) {
+    return this.service.listScanLogs(orgId, eventId, {
+      zoneId,
+      result,
+      limit: limit ? Number(limit) : undefined,
+    });
   }
 
   @Roles(

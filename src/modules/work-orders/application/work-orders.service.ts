@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { WorkOrderStatus } from "@prisma/client";
+import { AuditActionType, AuditEntityType, WorkOrderStatus } from "@prisma/client";
 import { assertWorkOrderTransition } from "../domain/work-order.transitions";
 import { WorkOrdersRepo } from "../infrastructure/work-orders.repo";
 import { AuditService } from "src/modules/audit/application/audit.service";
@@ -28,12 +28,15 @@ export class WorkOrdersService {
     zoneId?: string;
     scheduledStartAt?: string;
     scheduledEndAt?: string;
+    performedByUserId?: string | null;
+    ip?: string | null;
+    userAgent?: string | null;
   }) {
     await this.repo.assertEventInOrg(params.eventId, params.organizationId);
     await this.repo.assertProviderServiceInEvent(params.providerServiceId, params.eventId);
     if (params.zoneId) await this.repo.assertZoneInEvent(params.zoneId, params.eventId);
 
-    return this.repo.createWorkOrder({
+    const created = await this.repo.createWorkOrder({
       eventId: params.eventId,
       providerServiceId: params.providerServiceId,
       zoneId: params.zoneId,
@@ -42,6 +45,25 @@ export class WorkOrdersService {
       scheduledStartAt: params.scheduledStartAt ? new Date(params.scheduledStartAt) : undefined,
       scheduledEndAt: params.scheduledEndAt ? new Date(params.scheduledEndAt) : undefined,
     });
+
+    await this.audit.log({
+      organizationId: params.organizationId,
+      eventId: params.eventId,
+      userId: params.performedByUserId ?? null,
+      entityType: AuditEntityType.WORK_ORDER,
+      entityId: created.id,
+      action: AuditActionType.CREATED,
+      message: `Work order created: ${created.title}`,
+      changes: {
+        providerServiceId: created.providerServiceId,
+        zoneId: created.zoneId,
+        status: created.status,
+      },
+      ip: params.ip ?? null,
+      userAgent: params.userAgent ?? null,
+    });
+
+    return created;
   }
 
   async listByEvent(params: {
@@ -133,17 +155,38 @@ export class WorkOrdersService {
     type: string;
     url?: string;
     note?: string;
+    performedByUserId?: string | null;
+    ip?: string | null;
+    userAgent?: string | null;
   }) {
     await this.repo.assertEventInOrg(params.eventId, params.organizationId);
 
     const wo = await this.repo.getByIdOrThrow(params.workOrderId);
     if (wo.eventId !== params.eventId) throw new Error("Work order not in event scope");
 
-    return this.repo.addEvidence({
+    const evidence = await this.repo.addEvidence({
       workOrderId: params.workOrderId,
       type: params.type,
       url: params.url,
       note: params.note,
     });
+
+    await this.audit.log({
+      organizationId: params.organizationId,
+      eventId: params.eventId,
+      userId: params.performedByUserId ?? null,
+      entityType: AuditEntityType.WORK_ORDER,
+      entityId: params.workOrderId,
+      action: AuditActionType.EVIDENCE_ADDED,
+      message: `Work order evidence added: ${params.type}`,
+      changes: {
+        evidenceId: evidence.id,
+        type: evidence.type,
+      },
+      ip: params.ip ?? null,
+      userAgent: params.userAgent ?? null,
+    });
+
+    return evidence;
   }
 }

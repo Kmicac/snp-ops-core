@@ -89,6 +89,28 @@ export class StaffRepo {
     });
   }
 
+  listScanLogs(params: {
+    eventId: string;
+    zoneId?: string;
+    result?: string;
+    limit?: number;
+  }) {
+    return this.prisma.scanLog.findMany({
+      where: {
+        eventId: params.eventId,
+        ...(params.zoneId ? { zoneId: params.zoneId } : {}),
+        ...(params.result ? { result: params.result } : {}),
+      },
+      include: {
+        credential: { include: { staffMember: true } },
+        zone: true,
+        scannerUser: true,
+      },
+      orderBy: [{ scannedAt: "desc" }],
+      take: params.limit ?? 100,
+    });
+  }
+
 
   assertZoneInEvent(zoneId: string, eventId: string) {
     return this.prisma.zone.findFirstOrThrow({

@@ -7,16 +7,7 @@ export enum IncidentSeverity {
 
 export enum IncidentStatus {
   OPEN = "OPEN",
-  IN_PROGRESS = "IN_PROGRESS",
+  INVESTIGATING = "INVESTIGATING",
   RESOLVED = "RESOLVED",
   CLOSED = "CLOSED",
-}
-
-export enum IncidentType {
-  OPERATIONAL = "OPERATIONAL",
-  SECURITY = "SECURITY",
-  STAFF = "STAFF",
-  LOGISTICS = "LOGISTICS",
-  TECHNICAL = "TECHNICAL",
-  IMPROVEMENT = "IMPROVEMENT",
 }
