@@ -55,6 +55,13 @@ export class IncidentsController {
     });
   }
 
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.HR,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
   @Get()
   listIncidents(
     @Param("eventId") eventId: string,

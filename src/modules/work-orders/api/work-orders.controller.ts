@@ -31,6 +31,14 @@ export class WorkOrdersController {
     });
   }
 
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.HR,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.HEAD_REFEREE,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
   @Get("/orgs/:orgId/events/:eventId/work-orders")
   list(
     @Param("orgId") orgId: string,
@@ -41,6 +49,14 @@ export class WorkOrdersController {
     return this.service.listByEvent({ organizationId: orgId, eventId, status, zoneId });
   }
 
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.HR,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.HEAD_REFEREE,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
   @Get("/orgs/:orgId/events/:eventId/work-orders/:workOrderId")
   get(
     @Param("orgId") orgId: string,
@@ -75,6 +91,7 @@ export class WorkOrdersController {
     });
   }
 
+  @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
   @Post("/orgs/:orgId/events/:eventId/work-orders/:workOrderId/evidence")
   addEvidence(
     @Param("orgId") orgId: string,

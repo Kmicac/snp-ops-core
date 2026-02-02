@@ -1,15 +1,20 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { OrgRole } from "@prisma/client";
+import { Roles } from "src/modules/auth/security/roles.decorator";
 import { EventsService } from '../application/events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { CreateZoneDto } from './dto/create-zone.dto';
-
-// Por ahora hardcodeamos orgId en un "const" (luego entra Auth + org scoping real)
-const ORG_ID_PLACEHOLDER = 'ORG_PLACEHOLDER';
 
 @Controller()
 export class EventsController {
   constructor(private readonly service: EventsService) {}
 
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
   @Post('/orgs/:orgId/events')
   createEvent(@Param('orgId') orgId: string, @Body() dto: CreateEventDto) {
     return this.service.createEvent({
@@ -23,15 +28,37 @@ export class EventsController {
   }
 
   @Get('/orgs/:orgId/events')
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.HR,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.HEAD_REFEREE,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
   listEvents(@Param('orgId') orgId: string) {
     return this.service.listEvents(orgId);
   }
 
   @Get('/orgs/:orgId/events/:eventId')
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.HR,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.HEAD_REFEREE,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
   getEvent(@Param('orgId') orgId: string, @Param('eventId') eventId: string) {
     return this.service.getEvent(orgId, eventId);
   }
 
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
   @Post('/orgs/:orgId/events/:eventId/zones')
   createZone(
     @Param('orgId') orgId: string,
@@ -47,6 +74,14 @@ export class EventsController {
   }
 
   @Get('/orgs/:orgId/events/:eventId/zones')
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.HR,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.HEAD_REFEREE,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
   listZones(@Param('orgId') orgId: string, @Param('eventId') eventId: string) {
     return this.service.listZones({ organizationId: orgId, eventId });
   }

@@ -2,10 +2,7 @@ import { Body, Controller, Get, Param, Post } from "@nestjs/common";
 import { ProvidersService } from "../application/providers.service";
 import { CreateProviderDto } from "./dto/create-provider.dto";
 import { CreateProviderServiceDto } from "./dto/create-provider-service.dto";
-import { UseGuards } from "@nestjs/common";
-import { JwtAuthGuard } from "../../auth/security/jwt-auth.guard";
 import { Roles } from "../../auth/security/roles.decorator";
-import { RolesGuard } from "../../auth/security/roles.guard";
 import { OrgRole } from "@prisma/client";
 
 
@@ -13,7 +10,7 @@ import { OrgRole } from "@prisma/client";
 export class ProvidersController {
   constructor(private readonly service: ProvidersService) { }
 
-  @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS)
+  @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
   @Post("/orgs/:orgId/providers")
   createProvider(@Param("orgId") orgId: string, @Body() dto: CreateProviderDto) {
     return this.service.createProvider({
@@ -26,11 +23,18 @@ export class ProvidersController {
   }
 
   @Get("/orgs/:orgId/providers")
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.HR,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.HEAD_REFEREE,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
   listProviders(@Param("orgId") orgId: string) {
     return this.service.listProviders(orgId);
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
   @Post("/orgs/:orgId/events/:eventId/providers/:providerId/services")
   createProviderService(
@@ -52,6 +56,14 @@ export class ProvidersController {
   }
 
   @Get("/orgs/:orgId/events/:eventId/services")
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.HR,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.HEAD_REFEREE,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
   listProviderServices(@Param("orgId") orgId: string, @Param("eventId") eventId: string) {
     return this.service.listProviderServices({ organizationId: orgId, eventId });
   }

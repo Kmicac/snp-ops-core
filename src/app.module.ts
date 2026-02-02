@@ -21,6 +21,7 @@ import { JwtAuthGlobalGuard } from "./modules/auth/security/jwt-auth-global.guar
 import { RolesGuard } from "./modules/auth/security/roles.guard";
 import { notificationsConfig } from "./config/notifications.config";
 import { filesConfig } from "./config/files.config";
+import { IncidentsModule } from "./modules/incidents/incidents.module";
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { filesConfig } from "./config/files.config";
     InventoryModule,
     RefereesModule,
     TrainingsModule,
+    IncidentsModule,
     NotificationsModule,
   ],
   providers: [PrismaService,

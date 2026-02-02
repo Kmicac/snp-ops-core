@@ -95,9 +95,18 @@ export class PartnersRepo {
     });
   }
 
-  listSponsorsForEvent(eventId: string): Promise<(Sponsorship & { brand: Brand })[]> {
+  listSponsorsForEvent(params: {
+    organizationId: string;
+    eventId: string;
+    onlyConfirmed?: boolean;
+  }): Promise<(Sponsorship & { brand: Brand })[]> {
+    const { organizationId, eventId, onlyConfirmed = false } = params;
     return this.prisma.sponsorship.findMany({
-      where: { eventId, status: SponsorshipStatus.CONFIRMED },
+      where: {
+        organizationId,
+        eventId,
+        ...(onlyConfirmed ? { status: SponsorshipStatus.CONFIRMED } : {}),
+      },
       include: { brand: true },
       orderBy: { tier: "asc" },
     });
@@ -261,6 +270,33 @@ export class PartnersRepo {
       data: {
         imageUrl,
         updatedAt: new Date(),
+      },
+    });
+  }
+
+  async updateSponsorshipStatus(params: {
+    organizationId: string;
+    eventId: string;
+    sponsorshipId: string;
+    status: SponsorshipStatus;
+    notes?: string;
+  }) {
+    const { organizationId, eventId, sponsorshipId, status, notes } = params;
+
+    const sponsorship = await this.getSponsorshipOrThrow({
+      organizationId,
+      eventId,
+      sponsorshipId,
+    });
+
+    return this.prisma.sponsorship.update({
+      where: { id: sponsorship.id },
+      data: {
+        status,
+        ...(notes !== undefined ? { notes } : {}),
+      },
+      include: {
+        brand: true,
       },
     });
   }

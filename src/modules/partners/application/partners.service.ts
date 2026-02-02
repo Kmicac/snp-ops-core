@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import {
     PartnerSponsorApplicationStatus,
+    SponsorshipStatus,
     SponsorshipTier,
 } from "@prisma/client";
 import { PartnersRepo } from "../infrastructure/partners.repo";
@@ -66,8 +67,12 @@ export class PartnersService {
         });
     }
 
-    listSponsorsForEvent(eventId: string) {
-        return this.repo.listSponsorsForEvent(eventId);
+    listSponsorsForEvent(params: {
+        organizationId: string;
+        eventId: string;
+        onlyConfirmed?: boolean;
+    }) {
+        return this.repo.listSponsorsForEvent(params);
     }
 
     createApplication(organizationId: string, data: {
@@ -101,11 +106,28 @@ export class PartnersService {
         return this.repo.updateApplicationStatus(args);
     }
 
+    async updateSponsorshipStatus(args: {
+        organizationId: string;
+        eventId: string;
+        sponsorshipId: string;
+        status: SponsorshipStatus;
+        notes?: string;
+    }) {
+        await this.repo.getSponsorshipOrThrow({
+            organizationId: args.organizationId,
+            eventId: args.eventId,
+            sponsorshipId: args.sponsorshipId,
+        });
+
+        return this.repo.updateSponsorshipStatus(args);
+    }
+
     async getEventSponsorsByTier(organizationId: string, eventId: string) {
-        const sponsors = await this.repo.listEventSponsorsWithBrand(
-            eventId,
+        const sponsors = await this.listSponsorsForEvent({
             organizationId,
-        );
+            eventId,
+            onlyConfirmed: true,
+        });
 
         const byTier: Record<
             SponsorshipTier,
