@@ -22,6 +22,9 @@ import { CreateSponsorshipDto } from "./dto/create-sponsorship.dto";
 import { CreatePartnerSponsorApplicationDto } from "./dto/create-application.dto";
 import { UpdateApplicationStatusDto } from "./dto/update-application-status.dto";
 import { UpdateSponsorshipStatusDto } from "./dto/update-sponsorship-status.dto";
+import { UpdateBrandDto } from "./dto/update-brand.dto";
+import { UpdatePartnershipDto } from "./dto/update-partnership.dto";
+import { UpdateSponsorshipDto } from "./dto/update-sponsorship.dto";
 import { Roles } from "../../auth/security/roles.decorator";
 import { Public } from "../../auth/security/public.decorator";
 import { CreatePartnershipDto } from "./dto/create-partnersihp.dto";
@@ -50,6 +53,16 @@ export class PartnersController {
     }
 
     @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
+    @Patch("orgs/:orgId/brands/:brandId")
+    updateBrand(
+        @Param("orgId") orgId: string,
+        @Param("brandId") brandId: string,
+        @Body() dto: UpdateBrandDto,
+    ) {
+        return this.service.updateBrand(orgId, brandId, dto);
+    }
+
+    @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
     @Get("orgs/:orgId/brands")
     listBrands(@Param("orgId") orgId: string) {
         return this.service.listBrands(orgId);
@@ -62,6 +75,16 @@ export class PartnersController {
         @Body() dto: CreatePartnershipDto,
     ) {
         return this.service.createPartnership(orgId, dto);
+    }
+
+    @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
+    @Patch("orgs/:orgId/partners/:partnershipId")
+    updatePartnership(
+        @Param("orgId") orgId: string,
+        @Param("partnershipId") partnershipId: string,
+        @Body() dto: UpdatePartnershipDto,
+    ) {
+        return this.service.updatePartnership(orgId, partnershipId, dto);
     }
 
     @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA,)
@@ -78,6 +101,26 @@ export class PartnersController {
         @Body() dto: CreateSponsorshipDto,
     ) {
         return this.service.createSponsorship(orgId, eventId, dto);
+    }
+
+    @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
+    @Patch("orgs/:orgId/events/:eventId/sponsors/:sponsorshipId")
+    updateSponsorship(
+        @Param("orgId") orgId: string,
+        @Param("eventId") eventId: string,
+        @Param("sponsorshipId") sponsorshipId: string,
+        @Body() dto: UpdateSponsorshipDto,
+        @Req() req: AuthenticatedRequest,
+    ) {
+        const user = req.user as any;
+        const userId = user?.sub ?? null;
+        return this.service.updateSponsorship({
+            organizationId: orgId,
+            eventId,
+            sponsorshipId,
+            data: dto,
+            performedByUserId: userId,
+        });
     }
 
     @Roles(

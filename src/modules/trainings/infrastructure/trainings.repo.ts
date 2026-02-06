@@ -65,36 +65,45 @@ export class TrainingsRepo {
         return training;
     }
 
-    async getTrainingForEventOrThrow(trainingId: string, organizationId: string, eventId: string): Promise<Training> {
-        const training = await this.prisma.training.findFirst({
-            where: { id: trainingId, organizationId, eventId },
-        });
-        if (!training) {
-            throw new NotFoundException("Training not found");
-        }
-        return training;
+  async getTrainingForEventOrThrow(trainingId: string, organizationId: string, eventId: string): Promise<Training> {
+    const training = await this.prisma.training.findFirst({
+      where: { id: trainingId, organizationId, eventId },
+    });
+    if (!training) {
+      throw new NotFoundException("Training not found");
     }
+    return training;
+  }
 
-    updateTraining(params: {
-        trainingId: string;
-        title?: string;
-        description?: string;
-        location?: string;
-        startsAt?: Date;
-        endsAt?: Date;
-        mandatory?: boolean;
-    }): Promise<Training> {
-        const { trainingId, title, description, location, startsAt, endsAt, mandatory } = params;
+  async assertEventInOrg(eventId: string, organizationId: string) {
+    await this.prisma.event.findFirstOrThrow({
+      where: { id: eventId, organizationId },
+      select: { id: true },
+    });
+  }
 
-        return this.prisma.training.update({
-            where: { id: trainingId },
-            data: {
-                title,
-                description,
-                location,
-                startsAt,
-                endsAt,
-                mandatory,
+  updateTraining(params: {
+    trainingId: string;
+    eventId?: string | null;
+    title?: string;
+    description?: string;
+    location?: string;
+    startsAt?: Date;
+    endsAt?: Date;
+    mandatory?: boolean;
+  }): Promise<Training> {
+    const { trainingId, eventId, title, description, location, startsAt, endsAt, mandatory } = params;
+
+    return this.prisma.training.update({
+      where: { id: trainingId },
+      data: {
+        eventId,
+        title,
+        description,
+        location,
+        startsAt,
+        endsAt,
+        mandatory,
             },
         });
     }

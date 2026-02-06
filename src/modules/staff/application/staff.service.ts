@@ -35,6 +35,47 @@ export class StaffService {
     return this.repo.listStaff(orgId);
   }
 
+  async updateStaff(orgId: string, staffId: string, dto: any) {
+    const current = await this.repo.getStaffOrThrow(staffId, orgId);
+
+    const patch: Record<string, any> = {};
+    const changes: Record<string, { before: unknown; after: unknown }> = {};
+
+    if (dto.fullName !== undefined) {
+      patch.fullName = dto.fullName.trim();
+      changes.fullName = { before: current.fullName, after: patch.fullName };
+    }
+    if (dto.documentId !== undefined) {
+      patch.documentId = dto.documentId?.trim() ?? null;
+      changes.documentId = { before: current.documentId, after: patch.documentId };
+    }
+    if (dto.phone !== undefined) {
+      patch.phone = dto.phone?.trim() ?? null;
+      changes.phone = { before: current.phone, after: patch.phone };
+    }
+    if (dto.email !== undefined) {
+      patch.email = dto.email?.trim().toLowerCase() ?? null;
+      changes.email = { before: current.email, after: patch.email };
+    }
+    if (dto.notes !== undefined) {
+      patch.notes = dto.notes?.trim() ?? null;
+      changes.notes = { before: current.notes, after: patch.notes };
+    }
+
+    const updated = await this.repo.updateStaffMember(staffId, patch);
+
+    await this.audit.log({
+      organizationId: orgId,
+      entityType: AuditEntityType.STAFF_MEMBER,
+      entityId: updated.id,
+      action: AuditActionType.UPDATED,
+      message: `Staff member updated: ${updated.fullName}`,
+      changes,
+    });
+
+    return updated;
+  }
+
   async createShift(orgId: string, eventId: string, dto: any) {
     await this.repo.assertEventInOrg(eventId, orgId);
     const startsAt = new Date(dto.startsAt);
@@ -57,6 +98,47 @@ export class StaffService {
   async listShifts(orgId: string, eventId: string) {
     await this.repo.assertEventInOrg(eventId, orgId);
     return this.repo.listShifts(eventId);
+  }
+
+  async updateShift(orgId: string, eventId: string, shiftId: string, dto: any) {
+    await this.repo.assertEventInOrg(eventId, orgId);
+    await this.repo.assertShiftInEvent(shiftId, eventId);
+
+    const current = await this.repo.getShiftOrThrow(shiftId);
+
+    const startsAt = dto.startsAt ? new Date(dto.startsAt) : current.startsAt;
+    const endsAt = dto.endsAt ? new Date(dto.endsAt) : current.endsAt;
+    if (endsAt <= startsAt) throw new BadRequestException("Shift endsAt must be after startsAt");
+
+    const patch: Record<string, any> = {};
+    const changes: Record<string, { before: unknown; after: unknown }> = {};
+
+    if (dto.name !== undefined) {
+      patch.name = dto.name.trim();
+      changes.name = { before: current.name, after: patch.name };
+    }
+    if (dto.startsAt !== undefined) {
+      patch.startsAt = new Date(dto.startsAt);
+      changes.startsAt = { before: current.startsAt, after: patch.startsAt };
+    }
+    if (dto.endsAt !== undefined) {
+      patch.endsAt = new Date(dto.endsAt);
+      changes.endsAt = { before: current.endsAt, after: patch.endsAt };
+    }
+
+    const updated = await this.repo.updateShift(shiftId, patch);
+
+    await this.audit.log({
+      organizationId: orgId,
+      eventId,
+      entityType: AuditEntityType.SHIFT,
+      entityId: updated.id,
+      action: AuditActionType.UPDATED,
+      message: `Shift updated: ${updated.name}`,
+      changes,
+    });
+
+    return updated;
   }
 
   async assignStaff(orgId: string, eventId: string, staffId: string, dto: any) {
@@ -123,6 +205,33 @@ export class StaffService {
   async listCredentials(orgId: string, eventId: string) {
     await this.repo.assertEventInOrg(eventId, orgId);
     return this.repo.listCredentials(eventId);
+  }
+
+  async updateCredential(orgId: string, eventId: string, credentialId: string, dto: any) {
+    await this.repo.assertEventInOrg(eventId, orgId);
+    const current = await this.repo.getCredentialInEventOrThrow(credentialId, eventId);
+
+    const patch: Record<string, any> = {};
+    const changes: Record<string, { before: unknown; after: unknown }> = {};
+
+    if (dto.notes !== undefined) {
+      patch.notes = dto.notes?.trim() ?? null;
+      changes.notes = { before: current.notes ?? null, after: patch.notes };
+    }
+
+    const updated = await this.repo.updateCredential(credentialId, patch);
+
+    await this.audit.log({
+      organizationId: orgId,
+      eventId,
+      entityType: AuditEntityType.CREDENTIAL,
+      entityId: updated.id,
+      action: AuditActionType.UPDATED,
+      message: "Credential updated",
+      changes,
+    });
+
+    return updated;
   }
 
   async listScanLogs(

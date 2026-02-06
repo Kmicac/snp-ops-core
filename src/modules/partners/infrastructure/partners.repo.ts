@@ -229,6 +229,16 @@ export class PartnersRepo {
     });
   }
 
+  async updateBrand(params: {
+    brandId: string;
+    data: Partial<Brand>;
+  }) {
+    return this.prisma.brand.update({
+      where: { id: params.brandId },
+      data: params.data,
+    });
+  }
+
   async updateBrandLogo(
     organizationId: string,
     brandId: string,
@@ -255,6 +265,29 @@ export class PartnersRepo {
         organizationId,
         eventId,
       },
+    });
+  }
+
+  async getPartnershipOrThrow(params: {
+    organizationId: string;
+    partnershipId: string;
+  }) {
+    const { organizationId, partnershipId } = params;
+    return this.prisma.partnership.findFirstOrThrow({
+      where: {
+        id: partnershipId,
+        organizationId,
+      },
+    });
+  }
+
+  async updatePartnership(params: {
+    partnershipId: string;
+    data: Partial<Partnership>;
+  }) {
+    return this.prisma.partnership.update({
+      where: { id: params.partnershipId },
+      data: params.data,
     });
   }
 
@@ -298,6 +331,17 @@ export class PartnersRepo {
       include: {
         brand: true,
       },
+    });
+  }
+
+  async updateSponsorship(params: {
+    sponsorshipId: string;
+    data: Partial<Sponsorship>;
+  }) {
+    return this.prisma.sponsorship.update({
+      where: { id: params.sponsorshipId },
+      data: params.data,
+      include: { brand: true },
     });
   }
 }

@@ -16,6 +16,7 @@ import {
 } from "@prisma/client";
 import { ImprovementsService } from "../application/improvements.service";
 import { CreateImprovementDto } from "./dto/create-improvement.dto";
+import { UpdateImprovementDto } from "./dto/update-improvement.dto";
 import { UpdateImprovementStatusDto } from "./dto/update-improvement-status.dto";
 import { Roles } from "../../auth/security/roles.decorator";
 
@@ -104,6 +105,36 @@ export class ImprovementsController {
       organizationId: orgId,
       improvementId,
       nextStatus: dto.status,
+      performedByUserId: userId,
+      ip,
+      userAgent,
+    });
+  }
+
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.HR,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
+  @Patch(":improvementId")
+  updateImprovement(
+    @Param("orgId") orgId: string,
+    @Param("improvementId") improvementId: string,
+    @Body() dto: UpdateImprovementDto,
+    @Req() req: AuthenticatedRequest
+  ) {
+    const user = req.user as any;
+    const userId = user?.sub ?? null;
+    const ip = req.ip ?? null;
+    const uaHeader = req.headers["user-agent"];
+    const userAgent = typeof uaHeader === "string" ? uaHeader : null;
+
+    return this.service.updateImprovement({
+      organizationId: orgId,
+      improvementId,
+      data: dto,
       performedByUserId: userId,
       ip,
       userAgent,

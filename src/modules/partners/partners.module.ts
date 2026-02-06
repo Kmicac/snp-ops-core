@@ -4,9 +4,10 @@ import { PartnersService } from "./application/partners.service";
 import { PartnersRepo } from "./infrastructure/partners.repo";
 import { PrismaService } from "../../shared/prisma/prisma.service";
 import { FilesModule } from "../files/files.module";
+import { AuditModule } from "../audit/audit.module";
 
 @Module({
-  imports: [FilesModule],
+  imports: [FilesModule, AuditModule],
   controllers: [PartnersController],
   providers: [PartnersService, PartnersRepo, PrismaService],
 })

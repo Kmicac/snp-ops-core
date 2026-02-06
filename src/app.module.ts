@@ -15,6 +15,7 @@ import { InventoryModule } from "./modules/inventory/inventory.module";
 import { RefereesModule } from "./modules/referees/referees.module";
 import { TrainingsModule } from "./modules/trainings/trainings.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
+import { TasksModule } from "./modules/tasks/tasks.module";
 
 import { APP_GUARD } from "@nestjs/core";
 import { JwtAuthGlobalGuard } from "./modules/auth/security/jwt-auth-global.guard";
@@ -46,6 +47,7 @@ import { IncidentsModule } from "./modules/incidents/incidents.module";
     TrainingsModule,
     IncidentsModule,
     NotificationsModule,
+    TasksModule,
   ],
   providers: [PrismaService,
     { provide: APP_GUARD, useClass: JwtAuthGlobalGuard },

@@ -63,8 +63,36 @@ export class TrainingsController {
         }
         return this.service.updateTraining({
             organizationId: orgId,
-            eventId,
+            scopedEventId: eventId,
             trainingId,
+            eventId: dto.eventId ?? eventId,
+            title: dto.title,
+            description: dto.description,
+            location: dto.location,
+            startsAt: dto.startsAt ? new Date(dto.startsAt) : undefined,
+            endsAt: dto.endsAt ? new Date(dto.endsAt) : undefined,
+            mandatory: dto.mandatory,
+        });
+    }
+
+    @Roles(
+        OrgRole.SUPER_ADMIN,
+        OrgRole.EVENT_DIRECTOR,
+        OrgRole.HEAD_REFEREE,
+        OrgRole.HR,
+        OrgRole.TECH_SYSTEMS,
+        OrgRole.GUADA,
+    )
+    @Patch("orgs/:orgId/trainings/:trainingId")
+    updateTrainingForOrg(
+        @Param("orgId") orgId: string,
+        @Param("trainingId") trainingId: string,
+        @Body() dto: UpdateTrainingDto,
+    ) {
+        return this.service.updateTraining({
+            organizationId: orgId,
+            trainingId,
+            eventId: dto.eventId,
             title: dto.title,
             description: dto.description,
             location: dto.location,

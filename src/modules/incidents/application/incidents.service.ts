@@ -100,6 +100,77 @@ export class IncidentsService {
     return updated;
   }
 
+  async updateIncident(args: {
+    organizationId: string;
+    eventId: string;
+    incidentId: string;
+    data: {
+      title?: string;
+      description?: string;
+      severity?: IncidentSeverity;
+      occurredAt?: string | null;
+      zoneId?: string | null;
+    };
+    performedByUserId?: string | null;
+    ip?: string | null;
+    userAgent?: string | null;
+  }) {
+    await this.repo.assertEventInOrg(args.eventId, args.organizationId);
+
+    const current = await this.repo.getByIdOrThrow(args.incidentId);
+    if (current.eventId !== args.eventId) {
+      throw new Error("Incident not in event scope");
+    }
+
+    if (args.data.zoneId !== undefined && args.data.zoneId !== null) {
+      await this.repo.assertZoneInEvent(args.data.zoneId, args.eventId);
+    }
+
+    const patch: Record<string, any> = {};
+    const changes: Record<string, { before: unknown; after: unknown }> = {};
+
+    if (args.data.title !== undefined) {
+      patch.title = args.data.title.trim();
+      changes.title = { before: current.title, after: patch.title };
+    }
+    if (args.data.description !== undefined) {
+      patch.description = args.data.description.trim();
+      changes.description = { before: current.description, after: patch.description };
+    }
+    if (args.data.severity !== undefined) {
+      patch.severity = args.data.severity;
+      changes.severity = { before: current.severity, after: patch.severity };
+    }
+    if (args.data.occurredAt !== undefined) {
+      patch.occurredAt = args.data.occurredAt ? new Date(args.data.occurredAt) : null;
+      changes.occurredAt = { before: current.occurredAt, after: patch.occurredAt };
+    }
+    if (args.data.zoneId !== undefined) {
+      patch.zoneId = args.data.zoneId ?? null;
+      changes.zoneId = { before: current.zoneId, after: patch.zoneId };
+    }
+
+    const updated = await this.repo.updateIncident({
+      incidentId: args.incidentId,
+      data: patch,
+    });
+
+    await this.audit.createLog({
+      organizationId: args.organizationId,
+      eventId: args.eventId,
+      userId: args.performedByUserId ?? null,
+      entityType: AuditEntityType.INCIDENT,
+      entityId: args.incidentId,
+      action: AuditActionType.UPDATED,
+      message: "Incident updated",
+      changes,
+      ip: args.ip ?? null,
+      userAgent: args.userAgent ?? null,
+    });
+
+    return updated;
+  }
+
   async addEvidence(args: {
     organizationId: string;
     eventId: string;

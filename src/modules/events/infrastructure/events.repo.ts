@@ -59,6 +59,18 @@ type EventGetArgs = {
   include: { venue: true };
 };
 
+type EventUpdateArgs = {
+  where: { id: string };
+  data: {
+    code?: string;
+    name?: string;
+    startDate?: Date | null;
+    endDate?: Date | null;
+    venueId?: string | null;
+  };
+  include: { venue: true };
+};
+
 type ZoneCreateArgs = {
   data: { eventId: string; name: string; type: string | null };
 };
@@ -73,6 +85,7 @@ type EventsPrismaClient = {
     create(args: EventCreateArgs): Promise<EventWithVenue>;
     findMany(args: EventListArgs): Promise<EventWithVenue[]>;
     findFirstOrThrow(args: EventGetArgs): Promise<EventWithVenue>;
+    update(args: EventUpdateArgs): Promise<EventWithVenue>;
   };
   zone: {
     create(args: ZoneCreateArgs): Promise<ZoneRecord>;
@@ -121,6 +134,23 @@ export class EventsRepo {
   ): Promise<EventWithVenue> {
     return this.prisma.event.findFirstOrThrow({
       where: { id: eventId, organizationId },
+      include: { venue: true },
+    });
+  }
+
+  updateEvent(params: {
+    eventId: string;
+    data: {
+      code?: string;
+      name?: string;
+      startDate?: Date | null;
+      endDate?: Date | null;
+      venueId?: string | null;
+    };
+  }): Promise<EventWithVenue> {
+    return this.prisma.event.update({
+      where: { id: params.eventId },
+      data: params.data,
       include: { venue: true },
     });
   }

@@ -3,6 +3,7 @@ import { OrgRole, WorkOrderStatus } from "@prisma/client";
 import { WorkOrdersService } from "../application/work-orders.service";
 import { AddEvidenceDto } from "./dto/add-evidence.dto";
 import { CreateWorkOrderDto } from "./dto/create-work-order.dto";
+import { UpdateWorkOrderDto } from "./dto/update-work-order.dto";
 import { UpdateWorkOrderStatusDto } from "./dto/update-work-order-status.dto";
 import { Roles } from "src/modules/auth/security/roles.decorator";
 
@@ -93,6 +94,30 @@ export class WorkOrdersController {
       workOrderId,
       nextStatus: dto.status,
       note: dto.note,
+      performedByUserId: userId,
+      ip,
+      userAgent: typeof userAgent === "string" ? userAgent : null,
+    });
+  }
+
+  @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
+  @Patch("/orgs/:orgId/events/:eventId/work-orders/:workOrderId")
+  update(
+    @Param("orgId") orgId: string,
+    @Param("eventId") eventId: string,
+    @Param("workOrderId") workOrderId: string,
+    @Body() dto: UpdateWorkOrderDto,
+    @Req() req: any,
+  ) {
+    const userId = req.user?.sub ?? null;
+    const ip = req.ip ?? null;
+    const userAgent = req.headers["user-agent"] ?? null;
+
+    return this.service.update({
+      organizationId: orgId,
+      eventId,
+      workOrderId,
+      data: dto,
       performedByUserId: userId,
       ip,
       userAgent: typeof userAgent === "string" ? userAgent : null,

@@ -2,6 +2,8 @@ import { Injectable, Logger } from "@nestjs/common";
 import { HttpService } from "@nestjs/axios";
 import { ConfigService } from "@nestjs/config";
 import { firstValueFrom } from "rxjs";
+import { AuditEntityType, NotificationChannel, NotificationTrigger } from "@prisma/client";
+import { PrismaService } from "src/shared/prisma/prisma.service";
 
 type SendEmailParams = {
   to: string;
@@ -20,6 +22,7 @@ export class NotificationsService {
   constructor(
     private readonly http: HttpService,
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
   ) {
     const notifConfig = this.config.get<{
       enabled: boolean;
@@ -104,5 +107,63 @@ export class NotificationsService {
     const html = `<p>Recordatorio: <strong>${trainingTitle}</strong> comienza el ${startsAt.toISOString()}.</p>`;
 
     await this.sendEmail({ to, subject, text, html });
+  }
+
+  async registerDelivery(options: {
+    organizationId: string;
+    eventId?: string;
+    channel: NotificationChannel;
+    target: string;
+    payload: unknown;
+    status: string;
+    ruleId?: string;
+    errorMessage?: string;
+  }) {
+    return this.prisma.notificationDelivery.create({
+      data: {
+        organizationId: options.organizationId,
+        eventId: options.eventId ?? null,
+        channel: options.channel,
+        target: options.target,
+        payload: options.payload as any,
+        status: options.status,
+        ruleId: options.ruleId ?? null,
+        errorMessage: options.errorMessage ?? null,
+      },
+    });
+  }
+
+  async evaluateRulesAndScheduleNotifications(event: {
+    organizationId: string;
+    eventId?: string;
+    trigger: NotificationTrigger;
+    entityType: AuditEntityType;
+    entityId: string;
+    context?: unknown;
+  }) {
+    const rules = await this.prisma.notificationRule.findMany({
+      where: {
+        organizationId: event.organizationId,
+        trigger: event.trigger,
+        isActive: true,
+        ...(event.eventId
+          ? {
+              OR: [{ eventId: null }, { eventId: event.eventId }],
+            }
+          : {}),
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    if (rules.length === 0) {
+      this.logger.debug(
+        `No notification rules for ${event.trigger} (org ${event.organizationId})`,
+      );
+      return;
+    }
+
+    this.logger.debug(
+      `TODO: evaluate ${rules.length} notification rules for ${event.trigger} | entity ${event.entityType}:${event.entityId}`,
+    );
   }
 }

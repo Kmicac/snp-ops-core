@@ -11,6 +11,7 @@ import {
 import { Request } from "express";
 import { IncidentsService } from "../application/incidents.service";
 import { CreateIncidentDto } from "./dto/create-incident.dto";
+import { UpdateIncidentDto } from "./dto/update-incident.dto";
 import { UpdateIncidentStatusDto } from "./dto/update-incident-status.dto";
 import { IncidentStatus, OrgRole } from "@prisma/client";
 import { Roles } from "../../auth/security/roles.decorator";
@@ -98,6 +99,37 @@ export class IncidentsController {
       eventId,
       incidentId,
       nextStatus: dto.status,
+      performedByUserId: userId,
+      ip,
+      userAgent,
+    });
+  }
+
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
+  @Patch(":incidentId")
+  updateIncident(
+    @Param("orgId") orgId: string,
+    @Param("eventId") eventId: string,
+    @Param("incidentId") incidentId: string,
+    @Body() dto: UpdateIncidentDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const userId = req.user?.sub ?? null;
+    const ip = req.ip ?? null;
+    const userAgentHeader = req.headers["user-agent"];
+    const userAgent =
+      typeof userAgentHeader === "string" ? userAgentHeader : null;
+
+    return this.service.updateIncident({
+      organizationId: orgId,
+      eventId,
+      incidentId,
+      data: dto,
       performedByUserId: userId,
       ip,
       userAgent,

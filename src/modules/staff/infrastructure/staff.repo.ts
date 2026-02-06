@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { Credential, Shift, StaffMember } from "@prisma/client";
 import { PrismaService } from "../../../shared/prisma/prisma.service";
 
 @Injectable()
@@ -31,6 +32,13 @@ export class StaffRepo {
     });
   }
 
+  updateStaffMember(staffId: string, data: Partial<StaffMember>) {
+    return this.prisma.staffMember.update({
+      where: { id: staffId },
+      data,
+    });
+  }
+
   createShift(eventId: string, name: string, startsAt: Date, endsAt: Date) {
     return this.prisma.shift.create({ data: { eventId, name, startsAt, endsAt } });
   }
@@ -39,6 +47,19 @@ export class StaffRepo {
     return this.prisma.shift.findMany({
       where: { eventId },
       orderBy: [{ startsAt: "asc" }],
+    });
+  }
+
+  getShiftOrThrow(shiftId: string) {
+    return this.prisma.shift.findUniqueOrThrow({
+      where: { id: shiftId },
+    });
+  }
+
+  updateShift(shiftId: string, data: Partial<Shift>) {
+    return this.prisma.shift.update({
+      where: { id: shiftId },
+      data,
     });
   }
 
@@ -86,6 +107,19 @@ export class StaffRepo {
       where: { eventId },
       include: { staffMember: true },
       orderBy: [{ issuedAt: "desc" }],
+    });
+  }
+
+  getCredentialInEventOrThrow(credentialId: string, eventId: string) {
+    return this.prisma.credential.findFirstOrThrow({
+      where: { id: credentialId, eventId },
+    });
+  }
+
+  updateCredential(credentialId: string, data: Partial<Credential>) {
+    return this.prisma.credential.update({
+      where: { id: credentialId },
+      data,
     });
   }
 

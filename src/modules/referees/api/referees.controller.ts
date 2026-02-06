@@ -3,6 +3,7 @@ import {
     Controller,
     Get,
     Param,
+    Patch,
     Post,
 } from "@nestjs/common";
 import { RefereesService } from "../application/referees.service";
@@ -11,6 +12,8 @@ import { CreateTatamiDto } from "./dto/create-tatami.dto";
 import { Roles } from "../../auth/security/roles.decorator";
 import { OrgRole } from "@prisma/client";
 import { AssignRefereeDto } from "./dto/assign-referee.dto";
+import { UpdateRefereeProfileDto } from "./dto/update-referee-profile.dto";
+import { UpdateTatamiAssignmentDto } from "./dto/update-tatami-assignment.dto";
 
 @Controller()
 export class RefereesController {
@@ -36,6 +39,22 @@ export class RefereesController {
             isHeadReferee: dto.isHeadReferee,
             notes: dto.notes,
         });
+    }
+
+    @Roles(
+        OrgRole.SUPER_ADMIN,
+        OrgRole.EVENT_DIRECTOR,
+        OrgRole.HEAD_REFEREE,
+        OrgRole.TECH_SYSTEMS,
+        OrgRole.GUADA,
+    )
+    @Patch("orgs/:orgId/referees/profiles/:refereeId")
+    updateProfile(
+        @Param("orgId") orgId: string,
+        @Param("refereeId") refereeId: string,
+        @Body() dto: UpdateRefereeProfileDto,
+    ) {
+        return this.service.updateProfile(orgId, refereeId, dto);
     }
 
     @Roles(
@@ -95,6 +114,30 @@ export class RefereesController {
         return this.service.assignRefereeToTatami({
             tatamiId,
             staffMemberId: dto.staffMemberId,
+            role: dto.role,
+        });
+    }
+
+    @Roles(
+        OrgRole.SUPER_ADMIN,
+        OrgRole.EVENT_DIRECTOR,
+        OrgRole.HEAD_REFEREE,
+        OrgRole.TECH_SYSTEMS,
+        OrgRole.GUADA,
+    )
+    @Patch("orgs/:orgId/events/:eventId/tatamis/:tatamiId/referees/:staffMemberId")
+    updateTatamiAssignment(
+        @Param("orgId") orgId: string,
+        @Param("eventId") eventId: string,
+        @Param("tatamiId") tatamiId: string,
+        @Param("staffMemberId") staffMemberId: string,
+        @Body() dto: UpdateTatamiAssignmentDto,
+    ) {
+        return this.service.updateTatamiAssignment({
+            organizationId: orgId,
+            eventId,
+            tatamiId,
+            staffMemberId,
             role: dto.role,
         });
     }

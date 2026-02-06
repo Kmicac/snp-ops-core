@@ -1,17 +1,22 @@
 import { Injectable } from "@nestjs/common";
 import {
+    AuditActionType,
+    AuditEntityType,
     PartnerSponsorApplicationStatus,
+    PartnershipStatus,
     SponsorshipStatus,
     SponsorshipTier,
 } from "@prisma/client";
 import { PartnersRepo } from "../infrastructure/partners.repo";
 import { FilesService } from "src/modules/files/files.service";
+import { AuditService } from "src/modules/audit/application/audit.service";
 
 @Injectable()
 export class PartnersService {
     constructor(
         private readonly repo: PartnersRepo,
         private readonly files: FilesService,
+        private readonly audit: AuditService,
     ) { }
 
     createBrand(organizationId: string, data: {
@@ -29,6 +34,31 @@ export class PartnersService {
 
     listBrands(organizationId: string) {
         return this.repo.listBrands(organizationId);
+    }
+
+    async updateBrand(organizationId: string, brandId: string, data: {
+        name?: string;
+        logoUrl?: string | null;
+        websiteUrl?: string | null;
+        instagramUrl?: string | null;
+        contactName?: string | null;
+        contactEmail?: string | null;
+        contactPhone?: string | null;
+        notes?: string | null;
+    }) {
+        await this.repo.getBrandOrThrow(organizationId, brandId);
+
+        const patch: Record<string, any> = {};
+        if (data.name !== undefined) patch.name = data.name.trim();
+        if (data.logoUrl !== undefined) patch.logoUrl = data.logoUrl?.trim() ?? null;
+        if (data.websiteUrl !== undefined) patch.websiteUrl = data.websiteUrl?.trim() ?? null;
+        if (data.instagramUrl !== undefined) patch.instagramUrl = data.instagramUrl?.trim() ?? null;
+        if (data.contactName !== undefined) patch.contactName = data.contactName?.trim() ?? null;
+        if (data.contactEmail !== undefined) patch.contactEmail = data.contactEmail?.trim() ?? null;
+        if (data.contactPhone !== undefined) patch.contactPhone = data.contactPhone?.trim() ?? null;
+        if (data.notes !== undefined) patch.notes = data.notes?.trim() ?? null;
+
+        return this.repo.updateBrand({ brandId, data: patch });
     }
 
     createPartnership(organizationId: string, data: {
@@ -50,6 +80,35 @@ export class PartnersService {
 
     listPartners(organizationId: string) {
         return this.repo.listPartners(organizationId);
+    }
+
+    async updatePartnership(organizationId: string, partnershipId: string, data: {
+        brandId?: string;
+        imageUrl?: string | null;
+        status?: PartnershipStatus;
+        startDate?: string | null;
+        endDate?: string | null;
+        scope?: string | null;
+        benefits?: string | null;
+        notes?: string | null;
+    }) {
+        await this.repo.getPartnershipOrThrow({ organizationId, partnershipId });
+
+        if (data.brandId !== undefined) {
+            await this.repo.getBrandOrThrow(organizationId, data.brandId);
+        }
+
+        const patch: Record<string, any> = {};
+        if (data.brandId !== undefined) patch.brandId = data.brandId;
+        if (data.imageUrl !== undefined) patch.imageUrl = data.imageUrl?.trim() ?? null;
+        if (data.status !== undefined) patch.status = data.status;
+        if (data.startDate !== undefined) patch.startDate = data.startDate ? new Date(data.startDate) : null;
+        if (data.endDate !== undefined) patch.endDate = data.endDate ? new Date(data.endDate) : null;
+        if (data.scope !== undefined) patch.scope = data.scope?.trim() ?? null;
+        if (data.benefits !== undefined) patch.benefits = data.benefits?.trim() ?? null;
+        if (data.notes !== undefined) patch.notes = data.notes?.trim() ?? null;
+
+        return this.repo.updatePartnership({ partnershipId, data: patch });
     }
 
     createSponsorship(organizationId: string, eventId: string, data: {
@@ -113,13 +172,83 @@ export class PartnersService {
         status: SponsorshipStatus;
         notes?: string;
     }) {
+        const current = await this.repo.getSponsorshipOrThrow({
+            organizationId: args.organizationId,
+            eventId: args.eventId,
+            sponsorshipId: args.sponsorshipId,
+        });
+
+        const updated = await this.repo.updateSponsorshipStatus(args);
+
+        if (current.status !== updated.status) {
+            await this.audit.log({
+                organizationId: args.organizationId,
+                eventId: args.eventId,
+                entityType: AuditEntityType.SPONSORSHIP,
+                entityId: updated.id,
+                action: AuditActionType.STATUS_CHANGED,
+                message: `Sponsorship status changed from ${current.status} to ${updated.status}`,
+                changes: {
+                    fromStatus: current.status,
+                    toStatus: updated.status,
+                },
+            });
+        }
+
+        return updated;
+    }
+
+    async updateSponsorship(args: {
+        organizationId: string;
+        eventId: string;
+        sponsorshipId: string;
+        data: {
+            brandId?: string;
+            imageUrl?: string | null;
+            tier?: SponsorshipTier;
+            cashValue?: number | null;
+            inKindValue?: number | null;
+            benefits?: string | null;
+            notes?: string | null;
+        };
+        performedByUserId?: string | null;
+    }) {
         await this.repo.getSponsorshipOrThrow({
             organizationId: args.organizationId,
             eventId: args.eventId,
             sponsorshipId: args.sponsorshipId,
         });
 
-        return this.repo.updateSponsorshipStatus(args);
+        if (args.data.brandId !== undefined) {
+            await this.repo.getBrandOrThrow(args.organizationId, args.data.brandId);
+        }
+
+        const patch: Record<string, any> = {};
+        if (args.data.brandId !== undefined) patch.brandId = args.data.brandId;
+        if (args.data.imageUrl !== undefined) patch.imageUrl = args.data.imageUrl?.trim() ?? null;
+        if (args.data.tier !== undefined) patch.tier = args.data.tier;
+        if (args.data.cashValue !== undefined) patch.cashValue = args.data.cashValue ?? null;
+        if (args.data.inKindValue !== undefined) patch.inKindValue = args.data.inKindValue ?? null;
+        if (args.data.benefits !== undefined) patch.benefits = args.data.benefits?.trim() ?? null;
+        if (args.data.notes !== undefined) patch.notes = args.data.notes?.trim() ?? null;
+
+        const updated = await this.repo.updateSponsorship({
+            sponsorshipId: args.sponsorshipId,
+            data: patch,
+        });
+
+        await this.audit.log({
+            organizationId: args.organizationId,
+            eventId: args.eventId,
+            userId: args.performedByUserId ?? null,
+            entityType: AuditEntityType.SPONSORSHIP,
+            entityId: updated.id,
+            action: AuditActionType.UPDATED,
+            message: "Sponsorship updated",
+            changes: patch,
+        });
+
+        return updated;
     }
 
     async getEventSponsorsByTier(organizationId: string, eventId: string) {

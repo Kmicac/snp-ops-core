@@ -51,6 +51,22 @@ export class RefereesRepo {
         });
     }
 
+    async getProfileOrThrow(profileId: string, organizationId: string): Promise<RefereeProfile> {
+        return this.prisma.refereeProfile.findFirstOrThrow({
+            where: {
+                id: profileId,
+                staffMember: { organizationId },
+            },
+        });
+    }
+
+    async updateProfile(profileId: string, data: Partial<RefereeProfile>): Promise<RefereeProfile> {
+        return this.prisma.refereeProfile.update({
+            where: { id: profileId },
+            data,
+        });
+    }
+
 
     async createTatami(params: {
         eventId: string;
@@ -66,6 +82,23 @@ export class RefereesRepo {
                 order: order ?? 0,
                 notes,
             },
+        });
+    }
+
+    async getTatamiInEventOrThrow(tatamiId: string, eventId: string, organizationId: string): Promise<Tatami> {
+        return this.prisma.tatami.findFirstOrThrow({
+            where: {
+                id: tatamiId,
+                eventId,
+                event: { organizationId },
+            },
+        });
+    }
+
+    async assertStaffMemberInOrg(staffMemberId: string, organizationId: string) {
+        await this.prisma.staffMember.findFirstOrThrow({
+            where: { id: staffMemberId, organizationId },
+            select: { id: true },
         });
     }
 
@@ -108,6 +141,25 @@ export class RefereesRepo {
                 staffMemberId,
                 role,
             },
+        });
+    }
+
+    async updateTatamiAssignment(params: {
+        tatamiId: string;
+        staffMemberId: string;
+        role: string;
+    }): Promise<TatamiReferee> {
+        const existing = await this.prisma.tatamiReferee.findFirst({
+            where: { tatamiId: params.tatamiId, staffMemberId: params.staffMemberId },
+        });
+
+        if (!existing) {
+            throw new NotFoundException("Tatami assignment not found");
+        }
+
+        return this.prisma.tatamiReferee.update({
+            where: { id: existing.id },
+            data: { role: params.role },
         });
     }
 

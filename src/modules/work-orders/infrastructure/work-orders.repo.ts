@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../../../shared/prisma/prisma.service";
-import { WorkOrderStatus } from "@prisma/client";
+import { Prisma, WorkOrderStatus } from "@prisma/client";
 
 @Injectable()
 export class WorkOrdersRepo {
@@ -92,6 +92,18 @@ export class WorkOrdersRepo {
     return this.prisma.workOrder.update({
       where: { id: params.id },
       data: patch,
+      include: {
+        providerService: { include: { provider: true } },
+        zone: true,
+        evidences: true,
+      },
+    });
+  }
+
+  updateWorkOrder(params: { id: string; data: Prisma.WorkOrderUncheckedUpdateInput }) {
+    return this.prisma.workOrder.update({
+      where: { id: params.id },
+      data: params.data,
       include: {
         providerService: { include: { provider: true } },
         zone: true,

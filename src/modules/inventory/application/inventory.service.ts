@@ -18,6 +18,22 @@ export class InventoryService {
     return this.repo.listCategories(organizationId);
   }
 
+  async updateCategory(organizationId: string, categoryId: string, data: {
+    name?: string;
+    description?: string | null;
+  }) {
+    const current = await this.repo.getCategoryOrThrow(categoryId, organizationId);
+
+    const patch: Record<string, any> = {};
+    if (data.name !== undefined) patch.name = data.name.trim();
+    if (data.description !== undefined) patch.description = data.description?.trim() ?? null;
+
+    return this.repo.updateCategory({
+      categoryId: current.id,
+      data: patch,
+    });
+  }
+
   createAsset(organizationId: string, data: {
     name: string;
     categoryId?: string;

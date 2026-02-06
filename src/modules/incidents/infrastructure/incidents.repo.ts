@@ -10,6 +10,20 @@ import { PrismaService } from "src/shared/prisma/prisma.service";
 export class IncidentsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  async assertEventInOrg(eventId: string, organizationId: string) {
+    await this.prisma.event.findFirstOrThrow({
+      where: { id: eventId, organizationId },
+      select: { id: true },
+    });
+  }
+
+  async assertZoneInEvent(zoneId: string, eventId: string) {
+    await this.prisma.zone.findFirstOrThrow({
+      where: { id: zoneId, eventId },
+      select: { id: true },
+    });
+  }
+
   async createIncident(data: {
     eventId: string;
     zoneId?: string | null;
@@ -77,6 +91,16 @@ export class IncidentsRepository {
         status: args.nextStatus,
         resolvedAt,
       },
+    });
+  }
+
+  async updateIncident(args: {
+    incidentId: string;
+    data: Prisma.IncidentUpdateInput;
+  }) {
+    return this.prisma.incident.update({
+      where: { id: args.incidentId },
+      data: args.data,
     });
   }
 

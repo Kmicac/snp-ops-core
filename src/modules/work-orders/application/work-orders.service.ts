@@ -147,6 +147,89 @@ export class WorkOrdersService {
     return updated;
   }
 
+  async update(params: {
+    organizationId: string;
+    eventId: string;
+    workOrderId: string;
+    data: {
+      title?: string;
+      description?: string | null;
+      zoneId?: string | null;
+      providerServiceId?: string | null;
+      scheduledStartAt?: string | null;
+      scheduledEndAt?: string | null;
+    };
+    performedByUserId?: string | null;
+    ip?: string | null;
+    userAgent?: string | null;
+  }) {
+    await this.repo.assertEventInOrg(params.eventId, params.organizationId);
+
+    const current = await this.repo.getByIdOrThrow(params.workOrderId);
+    if (current.eventId !== params.eventId) {
+      throw new Error("Work order not in event scope");
+    }
+
+    if (params.data.zoneId !== undefined && params.data.zoneId !== null) {
+      await this.repo.assertZoneInEvent(params.data.zoneId, params.eventId);
+    }
+    if (params.data.providerServiceId !== undefined && params.data.providerServiceId !== null) {
+      await this.repo.assertProviderServiceInEvent(params.data.providerServiceId, params.eventId);
+    }
+
+    const patch: Record<string, any> = {};
+    const changes: Record<string, { before: unknown; after: unknown }> = {};
+
+    if (params.data.title !== undefined) {
+      patch.title = params.data.title.trim();
+      changes.title = { before: current.title, after: patch.title };
+    }
+    if (params.data.description !== undefined) {
+      patch.description = params.data.description?.trim() ?? null;
+      changes.description = { before: current.description, after: patch.description };
+    }
+    if (params.data.zoneId !== undefined) {
+      patch.zoneId = params.data.zoneId ?? null;
+      changes.zoneId = { before: current.zoneId, after: patch.zoneId };
+    }
+    if (params.data.providerServiceId !== undefined) {
+      patch.providerServiceId = params.data.providerServiceId ?? null;
+      changes.providerServiceId = { before: current.providerServiceId, after: patch.providerServiceId };
+    }
+    if (params.data.scheduledStartAt !== undefined) {
+      patch.scheduledStartAt = params.data.scheduledStartAt
+        ? new Date(params.data.scheduledStartAt)
+        : null;
+      changes.scheduledStartAt = { before: current.scheduledStartAt, after: patch.scheduledStartAt };
+    }
+    if (params.data.scheduledEndAt !== undefined) {
+      patch.scheduledEndAt = params.data.scheduledEndAt
+        ? new Date(params.data.scheduledEndAt)
+        : null;
+      changes.scheduledEndAt = { before: current.scheduledEndAt, after: patch.scheduledEndAt };
+    }
+
+    const updated = await this.repo.updateWorkOrder({
+      id: params.workOrderId,
+      data: patch,
+    });
+
+    await this.audit.log({
+      organizationId: params.organizationId,
+      eventId: params.eventId,
+      userId: params.performedByUserId ?? null,
+      entityType: AuditEntityType.WORK_ORDER,
+      entityId: updated.id,
+      action: AuditActionType.UPDATED,
+      message: "Work order updated",
+      changes,
+      ip: params.ip ?? null,
+      userAgent: params.userAgent ?? null,
+    });
+
+    return updated;
+  }
+
 
   async addEvidence(params: {
     organizationId: string;

@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post } from '@nestjs/common';
 import { OrgRole } from "@prisma/client";
 import { Roles } from "src/modules/auth/security/roles.decorator";
 import { EventsService } from '../application/events.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { CreateZoneDto } from './dto/create-zone.dto';
+import { UpdateEventDto } from './dto/update-event.dto';
 
 @Controller()
 export class EventsController {
@@ -51,6 +52,29 @@ export class EventsController {
   )
   getEvent(@Param('orgId') orgId: string, @Param('eventId') eventId: string) {
     return this.service.getEvent(orgId, eventId);
+  }
+
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
+  @Patch('/orgs/:orgId/events/:eventId')
+  updateEvent(
+    @Param('orgId') orgId: string,
+    @Param('eventId') eventId: string,
+    @Body() dto: UpdateEventDto,
+  ) {
+    return this.service.updateEvent({
+      organizationId: orgId,
+      eventId,
+      code: dto.code,
+      name: dto.name,
+      startDate: dto.startDate,
+      endDate: dto.endDate,
+      venueId: dto.venueId,
+    });
   }
 
   @Roles(

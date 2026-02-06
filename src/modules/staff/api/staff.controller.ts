@@ -1,9 +1,12 @@
-import { Body, Controller, Get, Param, Post, Query } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query } from "@nestjs/common";
 import { StaffService } from "../application/staff.service";
 import { CreateStaffDto } from "./dto/create-staff.dto";
 import { CreateShiftDto } from "./dto/create-shift.dto";
 import { CreateAssignmentDto } from "./dto/create-assignment.dto";
 import { ScanDto } from "./dto/scan.dto";
+import { UpdateStaffDto } from "./dto/update-staff.dto";
+import { UpdateShiftDto } from "./dto/update-shift.dto";
+import { UpdateCredentialDto } from "./dto/update-credential.dto";
 import { Roles } from "src/modules/auth/security/roles.decorator";
 import { OrgRole } from "@prisma/client";
 
@@ -21,6 +24,22 @@ export class StaffController {
   @Post("/orgs/:orgId/staff")
   createStaff(@Param("orgId") orgId: string, @Body() dto: CreateStaffDto) {
     return this.service.createStaff(orgId, dto);
+  }
+
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.HR,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
+  @Patch("/orgs/:orgId/staff/:staffId")
+  updateStaff(
+    @Param("orgId") orgId: string,
+    @Param("staffId") staffId: string,
+    @Body() dto: UpdateStaffDto,
+  ) {
+    return this.service.updateStaff(orgId, staffId, dto);
   }
 
   @Roles(
@@ -46,6 +65,23 @@ export class StaffController {
   @Post("/orgs/:orgId/events/:eventId/shifts")
   createShift(@Param("orgId") orgId: string, @Param("eventId") eventId: string, @Body() dto: CreateShiftDto) {
     return this.service.createShift(orgId, eventId, dto);
+  }
+
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.HR,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
+  @Patch("/orgs/:orgId/events/:eventId/shifts/:shiftId")
+  updateShift(
+    @Param("orgId") orgId: string,
+    @Param("eventId") eventId: string,
+    @Param("shiftId") shiftId: string,
+    @Body() dto: UpdateShiftDto,
+  ) {
+    return this.service.updateShift(orgId, eventId, shiftId, dto);
   }
 
   @Roles(
@@ -113,6 +149,23 @@ export class StaffController {
   @Get("/orgs/:orgId/events/:eventId/credentials")
   listCredentials(@Param("orgId") orgId: string, @Param("eventId") eventId: string) {
     return this.service.listCredentials(orgId, eventId);
+  }
+
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.HR,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
+  @Patch("/orgs/:orgId/events/:eventId/credentials/:credentialId")
+  updateCredential(
+    @Param("orgId") orgId: string,
+    @Param("eventId") eventId: string,
+    @Param("credentialId") credentialId: string,
+    @Body() dto: UpdateCredentialDto,
+  ) {
+    return this.service.updateCredential(orgId, eventId, credentialId, dto);
   }
 
   @Roles(

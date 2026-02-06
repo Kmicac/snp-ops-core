@@ -34,6 +34,26 @@ export class ImprovementsRepository {
     });
   }
 
+  async getByIdOrThrow(improvementId: string, organizationId: string) {
+    return this.prisma.improvement.findFirstOrThrow({
+      where: { id: improvementId, organizationId },
+    });
+  }
+
+  async assertEventInOrg(eventId: string, organizationId: string) {
+    await this.prisma.event.findFirstOrThrow({
+      where: { id: eventId, organizationId },
+      select: { id: true },
+    });
+  }
+
+  async assertIncidentInOrg(incidentId: string, organizationId: string) {
+    await this.prisma.incident.findFirstOrThrow({
+      where: { id: incidentId, event: { organizationId } },
+      select: { id: true },
+    });
+  }
+
   listByOrgAndEvent(args: {
     organizationId: string;
     eventId?: string;
@@ -62,6 +82,16 @@ export class ImprovementsRepository {
       data: {
         status: args.nextStatus,
       },
+    });
+  }
+
+  updateImprovement(args: {
+    improvementId: string;
+    data: Prisma.ImprovementUpdateInput;
+  }) {
+    return this.prisma.improvement.update({
+      where: { id: args.improvementId },
+      data: args.data,
     });
   }
 }

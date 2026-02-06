@@ -24,8 +24,9 @@ export class TrainingsService {
 
     async updateTraining(input: {
         organizationId: string;
-        eventId: string;
         trainingId: string;
+        scopedEventId?: string;
+        eventId?: string | null;
         title?: string;
         description?: string;
         location?: string;
@@ -33,9 +34,23 @@ export class TrainingsService {
         endsAt?: Date;
         mandatory?: boolean;
     }) {
-        await this.repo.getTrainingForEventOrThrow(input.trainingId, input.organizationId, input.eventId);
+        if (input.scopedEventId) {
+            await this.repo.getTrainingForEventOrThrow(
+                input.trainingId,
+                input.organizationId,
+                input.scopedEventId,
+            );
+        } else {
+            await this.repo.getTrainingOrThrow(input.trainingId, input.organizationId);
+        }
+
+        if (input.eventId !== undefined && input.eventId !== null) {
+            await this.repo.assertEventInOrg(input.eventId, input.organizationId);
+        }
+
         return this.repo.updateTraining({
             trainingId: input.trainingId,
+            eventId: input.eventId,
             title: input.title,
             description: input.description,
             location: input.location,

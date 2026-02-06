@@ -36,6 +36,26 @@ export class InventoryRepo {
     });
   }
 
+  async getCategoryOrThrow(categoryId: string, organizationId: string): Promise<AssetCategory> {
+    const category = await this.prisma.assetCategory.findFirst({
+      where: { id: categoryId, organizationId },
+    });
+    if (!category) {
+      throw new NotFoundException("Asset category not found");
+    }
+    return category;
+  }
+
+  updateCategory(params: {
+    categoryId: string;
+    data: Partial<AssetCategory>;
+  }): Promise<AssetCategory> {
+    return this.prisma.assetCategory.update({
+      where: { id: params.categoryId },
+      data: params.data,
+    });
+  }
+
   // -------- Assets --------
 
   createAsset(params: {

@@ -11,6 +11,7 @@ import { InventoryService } from "../application/inventory.service";
 import { CreateAssetCategoryDto } from "./dto/create-asset-category.dto";
 import { CreateAssetDto } from "./dto/create-asset.dto";
 import { UpdateAssetDto } from "./dto/update-asset.dto";
+import { UpdateAssetCategoryDto } from "./dto/update-asset-category.dto";
 import { CheckoutAssetDto } from "./dto/checkout-asset.dto";
 import { ReturnAssetDto } from "./dto/return-asset.dto";
 import { AssetStatus } from "@prisma/client";
@@ -45,6 +46,21 @@ export class InventoryController {
   @Get("orgs/:orgId/asset-categories")
   listCategories(@Param("orgId") orgId: string) {
     return this.service.listCategories(orgId);
+  }
+
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
+  @Patch("orgs/:orgId/asset-categories/:categoryId")
+  updateCategory(
+    @Param("orgId") orgId: string,
+    @Param("categoryId") categoryId: string,
+    @Body() dto: UpdateAssetCategoryDto,
+  ) {
+    return this.service.updateCategory(orgId, categoryId, dto);
   }
 
   @Roles(
