@@ -10,6 +10,11 @@ export class CreateEventDto {
   name!: string;
 
   @IsOptional()
+  @IsString()
+  @Length(1, 2000)
+  description?: string;
+
+  @IsOptional()
   @IsDateString()
   startDate?: string;
 
@@ -17,6 +22,20 @@ export class CreateEventDto {
   @IsDateString()
   endDate?: string;
 
+  @IsOptional()
+  @IsString()
+  @Length(1, 200)
+  venue?: string;
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  imageKey?: string;
+
+  // Campo legacy para compatibilidad.
   @IsOptional()
   @IsString()
   venueId?: string;

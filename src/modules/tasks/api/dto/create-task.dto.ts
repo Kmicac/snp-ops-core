@@ -32,11 +32,41 @@ export class CreateTaskDto {
 
   @IsOptional()
   @IsDateString()
-  dueAt?: string;
+  dueDate?: string;
 
   @IsOptional()
   @IsString()
   eventId?: string;
+
+  @IsOptional()
+  @IsString()
+  assigneeId?: string;
+
+  @IsOptional()
+  @IsString()
+  relatedWorkOrderId?: string;
+
+  @IsOptional()
+  @IsString()
+  relatedIncidentId?: string;
+
+  @IsOptional()
+  @IsString()
+  relatedSponsorshipId?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 200)
+  relatedLabel?: string;
+
+  // Campos legacy para compatibilidad hacia atrás.
+  @IsOptional()
+  @IsDateString()
+  dueAt?: string;
+
+  @IsOptional()
+  @IsString()
+  assignedToId?: string;
 
   @IsOptional()
   @IsString()
@@ -57,8 +87,4 @@ export class CreateTaskDto {
   @IsOptional()
   @IsString()
   sponsorshipId?: string;
-
-  @IsOptional()
-  @IsString()
-  assignedToId?: string;
 }

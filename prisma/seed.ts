@@ -40,11 +40,17 @@ async function main() {
   });
 
   const event = await prisma.event.upsert({
-    where: { code: eventCode },
+    where: {
+      organizationId_code: {
+        organizationId: org.id,
+        code: eventCode,
+      },
+    },
     update: {
       name: "ADCC LATINOAMÉRICA 2025",
       startDate: new Date("2025-12-13T00:00:00.000Z"),
       endDate: new Date("2025-12-13T23:59:59.000Z"),
+      venue: venue.name,
       organizationId: org.id,
       venueId: venue.id,
     },
@@ -53,6 +59,7 @@ async function main() {
       name: "ADCC LATINOAMÉRICA 2025",
       startDate: new Date("2025-12-13T00:00:00.000Z"),
       endDate: new Date("2025-12-13T23:59:59.000Z"),
+      venue: venue.name,
       organizationId: org.id,
       venueId: venue.id,
     },

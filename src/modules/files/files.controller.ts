@@ -2,13 +2,17 @@ import { Body, Controller, Post, UploadedFile, UseInterceptors, BadRequestExcept
 import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
 import { FilesService } from "./files.service";
-import { IsString } from "class-validator";
+import { IsOptional, IsString } from "class-validator";
 import { OrgRole } from "@prisma/client";
 import { Roles } from "../auth/security/roles.decorator";
 
 class UploadFileDto {
   @IsString()
   folder!: string; 
+
+  @IsOptional()
+  @IsString()
+  entityId?: string;
 }
 
 @Controller("files")
@@ -33,6 +37,7 @@ export class FilesController {
       mimeType: file.mimetype,
       originalName: file.originalname,
       folder: dto.folder,
+      entityId: dto.entityId,
     });
   }
 }

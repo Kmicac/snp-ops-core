@@ -31,11 +31,41 @@ export class UpdateTaskDto {
 
   @IsOptional()
   @IsDateString()
-  dueAt?: string;
+  dueDate?: string | null;
 
   @IsOptional()
   @IsString()
   eventId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  assigneeId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  relatedWorkOrderId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  relatedIncidentId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  relatedSponsorshipId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 200)
+  relatedLabel?: string | null;
+
+  // Campos legacy para compatibilidad hacia atrás.
+  @IsOptional()
+  @IsDateString()
+  dueAt?: string | null;
+
+  @IsOptional()
+  @IsString()
+  assignedToId?: string | null;
 
   @IsOptional()
   @IsString()
@@ -56,8 +86,4 @@ export class UpdateTaskDto {
   @IsOptional()
   @IsString()
   sponsorshipId?: string | null;
-
-  @IsOptional()
-  @IsString()
-  assignedToId?: string | null;
 }

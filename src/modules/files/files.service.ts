@@ -47,11 +47,13 @@ export class FilesService {
     });
   }
 
-  private buildKey(folder: string, originalName: string): string {
+  private buildKey(folder: string, originalName: string, entityId?: string): string {
     const cleanFolder = folder.replace(/^\/+|\/+$/g, "");
+    const cleanEntityId = entityId?.replace(/^\/+|\/+$/g, "");
     const ext = originalName.split(".").pop();
     const id = randomUUID();
-    return `${cleanFolder}/${id}.${ext ?? "bin"}`;
+    const basePath = cleanEntityId ? `${cleanFolder}/${cleanEntityId}` : cleanFolder;
+    return `${basePath}/${id}.${ext ?? "bin"}`;
   }
 
   private buildPublicUrl(key: string): string {
@@ -64,9 +66,10 @@ export class FilesService {
     mimeType: string;
     originalName: string;
     folder: string; // ej: "partners", "events/ADCC_LATAM_2025/sponsors"
+    entityId?: string;
   }): Promise<UploadedFileInfo> {
-    const { buffer, mimeType, originalName, folder } = params;
-    const key = this.buildKey(folder, originalName);
+    const { buffer, mimeType, originalName, folder, entityId } = params;
+    const key = this.buildKey(folder, originalName, entityId);
 
     await this.s3.send(
       new PutObjectCommand({

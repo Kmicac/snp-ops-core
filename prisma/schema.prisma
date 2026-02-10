@@ -170,15 +170,11 @@ enum TaskPriority {
 
 enum TaskType {
   GENERAL
-  EVENT_PREP
-  EVENT_DAY
-  POST_EVENT
+  INCIDENT
+  WORK_ORDER
   SPONSORSHIP
-  PROVIDER
-  INCIDENT_FOLLOWUP
-  IMPROVEMENT
   REFEREE
-  TRAINING
+  INVENTORY
 }
 
 enum NotificationChannel {
@@ -210,6 +206,7 @@ model Organization {
   auditLogs    AuditLog[]
   improvements Improvement[]
   tasks        Task[]
+  eventResources EventResource[]
   notificationRules      NotificationRule[]
   notificationDeliveries NotificationDelivery[]
 
@@ -242,16 +239,20 @@ model Venue {
 model Event {
   id             String    @id @default(cuid())
   organizationId String
-  code           String    @unique
+  code           String
   name           String
+  description    String?
   startDate      DateTime?
   endDate        DateTime?
+  venue          String?
   venueId        String?
+  imageUrl       String?
+  imageKey       String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
   organization     Organization      @relation(fields: [organizationId], references: [id])
-  venue            Venue?            @relation(fields: [venueId], references: [id])
+  venueRef         Venue?            @relation(fields: [venueId], references: [id])
   zones            Zone[]
   providerServices ProviderService[]
   workOrders       WorkOrder[]
@@ -268,11 +269,13 @@ model Event {
   sponsorships Sponsorship[]
 
   assetUsages AssetUsage[]
+  resources  EventResource[]
 
   tatamis   Tatami[]
   trainings Training[]
 
   @@index([organizationId])
+  @@unique([organizationId, code])
 }
 
 model Zone {
@@ -437,6 +440,7 @@ model StaffMember {
   credentials  Credential[]
 
   assetUsages AssetUsage[]
+  eventResources EventResource[]
 
   refereeProfile RefereeProfile?
   tatamiReferees TatamiReferee[]
@@ -623,6 +627,7 @@ model Task {
   incidentId     String?
   improvementId  String?
   sponsorshipId  String?
+  relatedLabel   String?
 
   title       String
   description String?
@@ -650,7 +655,8 @@ model Task {
   createdBy  User  @relation("TaskCreatedBy", fields: [createdById], references: [id])
   assignedTo User? @relation("TaskAssignedTo", fields: [assignedToId], references: [id])
 
-  comments TaskComment[]
+  comments  TaskComment[]
+  checklist TaskChecklistItem[]
 
   @@index([organizationId])
   @@index([eventId])
@@ -670,6 +676,19 @@ model TaskComment {
 
   task   Task @relation(fields: [taskId], references: [id])
   author User @relation(fields: [authorId], references: [id])
+
+  @@index([taskId])
+}
+
+model TaskChecklistItem {
+  id        String   @id @default(cuid())
+  taskId    String
+  text      String
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id])
 
   @@index([taskId])
 }
@@ -867,7 +886,8 @@ model Asset {
   organization Organization   @relation(fields: [organizationId], references: [id])
   category     AssetCategory? @relation(fields: [categoryId], references: [id])
 
-  usages       AssetUsage[]
+  usages          AssetUsage[]
+  eventResources EventResource[]
 
   @@index([organizationId])
   @@index([categoryId])
@@ -900,6 +920,28 @@ model AssetUsage {
   @@index([eventId])
   @@index([zoneId])
   @@index([staffMemberId])
+}
+
+model EventResource {
+  id             String   @id @default(cuid())
+  organizationId String
+  eventId        String
+  staffMemberId  String?
+  assetId        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  event        Event        @relation(fields: [eventId], references: [id])
+  staffMember  StaffMember? @relation(fields: [staffMemberId], references: [id])
+  asset        Asset?       @relation(fields: [assetId], references: [id])
+
+  @@index([organizationId])
+  @@index([eventId])
+  @@index([staffMemberId])
+  @@index([assetId])
+  @@unique([eventId, staffMemberId])
+  @@unique([eventId, assetId])
 }
 
 // REFEREES / TATAMIS
