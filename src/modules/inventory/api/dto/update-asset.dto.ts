@@ -2,6 +2,7 @@ import {
   IsDateString,
   IsEnum,
   IsInt,
+  IsNumber,
   IsOptional,
   IsString,
   Min,
@@ -39,12 +40,41 @@ export class UpdateAssetDto {
   quantity?: number;
 
   @IsOptional()
-  @IsInt()
+  @IsNumber()
   purchasePrice?: number;
 
   @IsOptional()
   @IsDateString()
   purchaseDate?: string;
+
+  @IsOptional()
+  @IsString()
+  supplierName?: string;
+
+  @IsOptional()
+  @IsString()
+  notes?: string;
+
+  // Puede guardar contenido QR (ej: "ASSET:{id}") o path/url/base64 para futuras integraciones S3/CDN.
+  @IsOptional()
+  @IsString()
+  qrCode?: string;
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  imageKey?: string;
+
+  @IsOptional()
+  @IsString()
+  qrImageUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  qrImageKey?: string;
 
   @IsOptional()
   @IsEnum(AssetStatus)

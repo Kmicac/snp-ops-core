@@ -1,5 +1,6 @@
 import {
   IsDateString,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
@@ -26,6 +27,7 @@ export class CheckoutAssetDto {
   expectedReturnAt?: string;
 
   @IsOptional()
+  @IsEnum(AssetCondition)
   conditionOut?: AssetCondition;
 
   @IsOptional()

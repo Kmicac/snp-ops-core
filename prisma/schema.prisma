@@ -68,6 +68,10 @@ enum AuditEntityType {
   IMPROVEMENT
   TASK
   SPONSORSHIP
+  INVENTORY_ASSET
+  INVENTORY_MOVEMENT
+  INVENTORY_KIT
+  INVENTORY_CHECKLIST
 }
 
 enum AuditActionType {
@@ -154,6 +158,32 @@ enum AssetCondition {
   BROKEN
 }
 
+enum InventoryMovementType {
+  CHECK_OUT
+  CHECK_IN
+  MAINTENANCE
+  ADJUSTMENT
+}
+
+enum InventoryChecklistType {
+  LOADING
+  UNLOADING
+  RETURN
+}
+
+enum InventoryChecklistStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  SIGNED
+}
+
+enum InventoryChecklistItemCondition {
+  GOOD
+  DAMAGED
+  MISSING
+}
+
 enum TaskStatus {
   TODO
   IN_PROGRESS
@@ -217,8 +247,10 @@ model Organization {
   partnerSponsorApplications PartnerSponsorApplication[]
 
   // inventario
-  assetCategories AssetCategory[]
-  assets          Asset[]
+  assetCategories     AssetCategory[]
+  assets              Asset[]
+  inventoryKits       InventoryKit[]
+  inventoryChecklists InventoryChecklist[]
 
   // trainings
   trainings Training[]
@@ -269,7 +301,8 @@ model Event {
   sponsorships Sponsorship[]
 
   assetUsages AssetUsage[]
-  resources  EventResource[]
+  resources   EventResource[]
+  inventoryChecklists InventoryChecklist[]
 
   tatamis   Tatami[]
   trainings Training[]
@@ -856,6 +889,7 @@ model AssetCategory {
 
   organization Organization @relation(fields: [organizationId], references: [id])
   assets       Asset[]
+  kitItems     InventoryKitItem[]
 
   @@index([organizationId])
   @@unique([organizationId, name])
@@ -876,9 +910,15 @@ model Asset {
 
   quantity       Int             @default(1)
   purchaseDate   DateTime?
-  purchasePrice  Int?
-  location       String?
+  purchasePrice  Decimal?
+  supplierName   String?
+  location       String          @default("Main warehouse")
   notes          String?
+  qrCode         String?
+  imageUrl       String?
+  imageKey       String?
+  qrImageUrl     String?
+  qrImageKey     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -888,6 +928,8 @@ model Asset {
 
   usages          AssetUsage[]
   eventResources EventResource[]
+  kitItems       InventoryKitItem[]
+  checklistItems InventoryChecklistItem[]
 
   @@index([organizationId])
   @@index([categoryId])
@@ -900,6 +942,10 @@ model AssetUsage {
   eventId       String?
   zoneId        String?
   staffMemberId String?
+  movementType  InventoryMovementType @default(CHECK_OUT)
+  performedByUserId String?
+  assetName     String
+  eventName     String?
 
   quantity         Int      @default(1)
   checkoutAt       DateTime @default(now())
@@ -918,8 +964,91 @@ model AssetUsage {
 
   @@index([assetId])
   @@index([eventId])
+  @@index([movementType, checkoutAt])
   @@index([zoneId])
   @@index([staffMemberId])
+}
+
+model InventoryKit {
+  id          String   @id @default(cuid())
+  organizationId String
+  name        String
+  description String?
+  eventType   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  items        InventoryKitItem[]
+
+  @@index([organizationId])
+  @@index([eventType])
+}
+
+model InventoryKitItem {
+  id         String   @id @default(cuid())
+  kitId      String
+  assetId    String?
+  categoryId String?
+  name       String
+  quantity   Int
+
+  kit      InventoryKit  @relation(fields: [kitId], references: [id], onDelete: Cascade)
+  asset    Asset?        @relation(fields: [assetId], references: [id])
+  category AssetCategory? @relation(fields: [categoryId], references: [id])
+
+  @@index([kitId])
+  @@index([assetId])
+  @@index([categoryId])
+}
+
+model InventoryChecklist {
+  id             String                   @id @default(cuid())
+  organizationId String
+  eventId        String
+  checklistNumber String                 @unique
+  checklistType  InventoryChecklistType
+  responsibleName String?
+  notes          String?
+  status         InventoryChecklistStatus @default(PENDING)
+  totalItems     Int                      @default(0)
+  verifiedItems  Int                      @default(0)
+  missingItems   Int                      @default(0)
+  signatureData  String?
+  signedBy       String?
+  signedAt       DateTime?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  event        Event        @relation(fields: [eventId], references: [id])
+  items        InventoryChecklistItem[]
+
+  @@index([organizationId])
+  @@index([eventId])
+  @@index([status])
+}
+
+model InventoryChecklistItem {
+  id               String                         @id @default(cuid())
+  checklistId      String
+  assetId          String
+  assetName        String
+  assetCodeOrTag   String
+  quantityExpected Int
+  quantityVerified Int                            @default(0)
+  verified         Boolean                        @default(false)
+  verifiedAt       DateTime?
+  verifiedBy       String?
+  notes            String?
+  condition        InventoryChecklistItemCondition @default(GOOD)
+
+  checklist InventoryChecklist @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  asset     Asset              @relation(fields: [assetId], references: [id])
+
+  @@index([checklistId])
+  @@index([assetId])
+  @@index([verified])
 }
 
 model EventResource {

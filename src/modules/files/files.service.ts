@@ -6,6 +6,7 @@ import {
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
+import type { UploadFolder } from "./domain/upload-folder";
 
 export type UploadedFileInfo = {
   key: string;
@@ -65,7 +66,7 @@ export class FilesService {
     buffer: Buffer;
     mimeType: string;
     originalName: string;
-    folder: string; // ej: "partners", "events/ADCC_LATAM_2025/sponsors"
+    folder: UploadFolder; // ej: "assets", "assets-qr", "orgs/{orgId}/events/{eventId}/assets"
     entityId?: string;
   }): Promise<UploadedFileInfo> {
     const { buffer, mimeType, originalName, folder, entityId } = params;

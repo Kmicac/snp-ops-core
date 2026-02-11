@@ -1,4 +1,4 @@
-import { IsDateString, IsOptional, IsString } from "class-validator";
+import { IsDateString, IsEnum, IsOptional, IsString } from "class-validator";
 import { AssetCondition } from "@prisma/client";
 
 export class ReturnAssetDto {
@@ -7,6 +7,7 @@ export class ReturnAssetDto {
   returnedAt?: string;
 
   @IsOptional()
+  @IsEnum(AssetCondition)
   conditionIn?: AssetCondition;
 
   @IsOptional()

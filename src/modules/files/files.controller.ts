@@ -5,6 +5,8 @@ import { FilesService } from "./files.service";
 import { IsOptional, IsString } from "class-validator";
 import { OrgRole } from "@prisma/client";
 import { Roles } from "../auth/security/roles.decorator";
+import { isAllowedUploadFolder } from "./domain/upload-folder";
+import type { UploadFolder } from "./domain/upload-folder";
 
 class UploadFileDto {
   @IsString()
@@ -32,11 +34,17 @@ export class FilesController {
       throw new BadRequestException("file is required");
     }
 
+    if (!isAllowedUploadFolder(dto.folder)) {
+      throw new BadRequestException(
+        "Invalid folder. Allowed: partners, assets, assets-qr, inventory-qr, orgs/*, events/*",
+      );
+    }
+
     return this.files.uploadPublicFile({
       buffer: file.buffer,
       mimeType: file.mimetype,
       originalName: file.originalname,
-      folder: dto.folder,
+      folder: dto.folder as UploadFolder,
       entityId: dto.entityId,
     });
   }
