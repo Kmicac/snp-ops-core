@@ -20,10 +20,12 @@ export class RolesGuard implements CanActivate {
     const orgId = req.params?.orgId as string | undefined;
     const userId = req.user?.sub as string | undefined;
 
-    if (!orgId || !userId) throw new ForbiddenException("Missing org scope or user");
+    if (!userId) throw new ForbiddenException("Missing user");
 
     const memberships = await this.prisma.orgMembership.findMany({
-      where: { organizationId: orgId, userId },
+      where: orgId
+        ? { organizationId: orgId, userId }
+        : { userId },
       select: { role: true },
     });
 

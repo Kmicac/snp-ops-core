@@ -16,7 +16,6 @@ export class AuthService {
     const passwordHash = await bcrypt.hash(params.password, 12);
     const user = await this.repo.createUser({ email, passwordHash, fullName: params.fullName });
 
-    // Por defecto: TECH_SYSTEMS (ajustable)
     await this.repo.addMembership({
       organizationId: params.orgId,
       userId: user.id,
@@ -40,9 +39,15 @@ export class AuthService {
   }
 
   async me(userId: string) {
-    const memberships = await this.repo.listMemberships(userId);
+    const [user, memberships] = await Promise.all([
+      this.repo.findUserById(userId),
+      this.repo.listMemberships(userId),
+    ]);
+
     return {
       userId,
+      email: user?.email ?? null,
+      fullName: user?.fullName ?? null,
       memberships: memberships.map((m) => ({
         orgId: m.organizationId,
         orgName: m.organization.name,

@@ -16,6 +16,7 @@ import { RefereesModule } from "./modules/referees/referees.module";
 import { TrainingsModule } from "./modules/trainings/trainings.module";
 import { NotificationsModule } from "./modules/notifications/notifications.module";
 import { TasksModule } from "./modules/tasks/tasks.module";
+import { FilesModule } from "./modules/files/files.module";
 
 import { APP_GUARD } from "@nestjs/core";
 import { JwtAuthGlobalGuard } from "./modules/auth/security/jwt-auth-global.guard";
@@ -42,6 +43,7 @@ import { IncidentsModule } from "./modules/incidents/incidents.module";
     KpisModule,
     ImprovementsModule,
     PartnersModule,
+    FilesModule,
     InventoryModule,
     RefereesModule,
     TrainingsModule,

@@ -13,6 +13,17 @@ export class AuthRepo {
     });
   }
 
+  findUserById(userId: string) {
+    return this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        fullName: true,
+      },
+    });
+  }
+
   createUser(params: { email: string; passwordHash: string; fullName?: string }) {
     return this.prisma.user.create({
       data: {

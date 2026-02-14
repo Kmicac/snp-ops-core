@@ -44,7 +44,7 @@ export class FilesService {
         secretAccessKey: filesCfg.secretAccessKey,
       },
       endpoint: filesCfg.endpoint,
-      forcePathStyle: !!filesCfg.endpoint, // útil para MinIO/R2
+      forcePathStyle: !!filesCfg.endpoint,
     });
   }
 
@@ -62,29 +62,44 @@ export class FilesService {
     return `${base}/${key}`;
   }
 
+  private buildInlineDataUrl(buffer: Buffer, mimeType: string): string {
+    const safeMimeType = mimeType || "application/octet-stream";
+    return `data:${safeMimeType};base64,${buffer.toString("base64")}`;
+  }
+
   async uploadPublicFile(params: {
     buffer: Buffer;
     mimeType: string;
     originalName: string;
-    folder: UploadFolder; // ej: "assets", "assets-qr", "orgs/{orgId}/events/{eventId}/assets"
+    folder: UploadFolder;
     entityId?: string;
   }): Promise<UploadedFileInfo> {
     const { buffer, mimeType, originalName, folder, entityId } = params;
     const key = this.buildKey(folder, originalName, entityId);
 
-    await this.s3.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-        Body: buffer,
-        ContentType: mimeType,
-        ACL: "public-read", // si usas ACLs públicas
-      }),
-    );
+    try {
+      await this.s3.send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Body: buffer,
+          ContentType: mimeType,
+          ACL: "public-read",
+        }),
+      );
 
-    const url = this.buildPublicUrl(key);
-    this.logger.log(`Uploaded file to S3: ${key}`);
-    return { key, url };
+      const url = this.buildPublicUrl(key);
+      this.logger.log(`Uploaded file to S3: ${key}`);
+      return { key, url };
+    } catch (error) {
+      this.logger.warn(
+        `S3 upload failed, using inline fallback for ${key}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return {
+        key: `inline/${key}`,
+        url: this.buildInlineDataUrl(buffer, mimeType),
+      };
+    }
   }
 
   async deleteFile(key: string): Promise<void> {
