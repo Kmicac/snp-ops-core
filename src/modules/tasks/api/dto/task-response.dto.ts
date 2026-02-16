@@ -1,4 +1,9 @@
-import { TaskPriority, TaskStatus, TaskType } from "@prisma/client";
+import {
+  TaskActivityKind,
+  TaskPriority,
+  TaskStatus,
+  TaskType,
+} from "@prisma/client";
 
 export type TaskChecklistItemResponseDto = {
   id: string;
@@ -14,6 +19,19 @@ export type TaskCommentResponseDto = {
   authorName: string;
   authorAvatarUrl: string | null;
   message: string;
+  imageUrl: string | null;
+  imageKey: string | null;
+  createdAt: Date;
+};
+
+export type TaskActivityResponseDto = {
+  id: string;
+  kind: TaskActivityKind;
+  message: string | null;
+  imageUrl: string | null;
+  imageKey: string | null;
+  createdById: string | null;
+  createdByName: string | null;
   createdAt: Date;
 };
 
@@ -27,6 +45,10 @@ export type TaskResponseDto = {
   status: TaskStatus;
   priority: TaskPriority;
   type: TaskType;
+  labels: string[];
+  position: number;
+  imageUrl: string | null;
+  imageKey: string | null;
   assigneeId: string | null;
   assigneeName: string | null;
   assigneeAvatarUrl: string | null;

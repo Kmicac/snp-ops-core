@@ -1,6 +1,16 @@
 import { Injectable } from "@nestjs/common";
-import { Prisma, TaskPriority, TaskStatus, TaskType } from "@prisma/client";
+import {
+  Prisma,
+  TaskActivityKind,
+  TaskPriority,
+  TaskStatus,
+  TaskType,
+} from "@prisma/client";
 import { PrismaService } from "src/shared/prisma/prisma.service";
+
+const taskCommentInclude = Prisma.validator<Prisma.TaskCommentInclude>()({
+  author: true,
+});
 
 export const taskInclude = Prisma.validator<Prisma.TaskInclude>()({
   createdBy: true,
@@ -12,7 +22,7 @@ export const taskInclude = Prisma.validator<Prisma.TaskInclude>()({
   improvement: true,
   sponsorship: true,
   comments: {
-    include: { author: true },
+    include: taskCommentInclude,
     orderBy: { createdAt: "asc" },
   },
   checklist: {
@@ -20,130 +30,255 @@ export const taskInclude = Prisma.validator<Prisma.TaskInclude>()({
   },
 });
 
+const taskActivityInclude = Prisma.validator<Prisma.TaskActivityInclude>()({
+  createdBy: true,
+});
+
+const laneTaskSelect = Prisma.validator<Prisma.TaskSelect>()({
+  id: true,
+  status: true,
+  position: true,
+  createdAt: true,
+  completedAt: true,
+});
+
 export type TaskWithRelations = Prisma.TaskGetPayload<{
   include: typeof taskInclude;
 }>;
+
+export type TaskActivityWithRelations = Prisma.TaskActivityGetPayload<{
+  include: typeof taskActivityInclude;
+}>;
+
+export type LaneTask = Prisma.TaskGetPayload<{
+  select: typeof laneTaskSelect;
+}>;
+
+type Tx = Prisma.TransactionClient;
+
+type ListTasksParams = {
+  organizationId: string;
+  eventId?: string;
+  statuses?: TaskStatus[];
+  priority?: TaskPriority;
+  types?: TaskType[];
+  assigneeId?: string;
+  labels?: string[];
+  search?: string;
+};
 
 @Injectable()
 export class TasksRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async assertEventInOrg(eventId: string, organizationId: string) {
-    await this.prisma.event.findFirstOrThrow({
+  private db(tx?: Tx) {
+    return tx ?? this.prisma;
+  }
+
+  withTransaction<T>(callback: (tx: Tx) => Promise<T>): Promise<T> {
+    return this.prisma.$transaction((tx) => callback(tx), {
+      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+    });
+  }
+
+  async assertEventInOrg(eventId: string, organizationId: string, tx?: Tx) {
+    await this.db(tx).event.findFirstOrThrow({
       where: { id: eventId, organizationId },
       select: { id: true },
     });
   }
 
-  async assertZoneInOrg(zoneId: string, organizationId: string) {
-    await this.prisma.zone.findFirstOrThrow({
+  async assertZoneInOrg(zoneId: string, organizationId: string, tx?: Tx) {
+    await this.db(tx).zone.findFirstOrThrow({
       where: { id: zoneId, event: { organizationId } },
       select: { id: true },
     });
   }
 
-  async getWorkOrderScopeInOrg(workOrderId: string, organizationId: string) {
-    return this.prisma.workOrder.findFirstOrThrow({
+  async getWorkOrderScopeInOrg(workOrderId: string, organizationId: string, tx?: Tx) {
+    return this.db(tx).workOrder.findFirstOrThrow({
       where: { id: workOrderId, event: { organizationId } },
       select: { id: true, eventId: true },
     });
   }
 
-  async getIncidentScopeInOrg(incidentId: string, organizationId: string) {
-    return this.prisma.incident.findFirstOrThrow({
+  async getIncidentScopeInOrg(incidentId: string, organizationId: string, tx?: Tx) {
+    return this.db(tx).incident.findFirstOrThrow({
       where: { id: incidentId, event: { organizationId } },
       select: { id: true, eventId: true },
     });
   }
 
-  async assertImprovementInOrg(improvementId: string, organizationId: string) {
-    await this.prisma.improvement.findFirstOrThrow({
+  async assertImprovementInOrg(improvementId: string, organizationId: string, tx?: Tx) {
+    await this.db(tx).improvement.findFirstOrThrow({
       where: { id: improvementId, organizationId },
       select: { id: true },
     });
   }
 
-  async getSponsorshipScopeInOrg(sponsorshipId: string, organizationId: string) {
-    return this.prisma.sponsorship.findFirstOrThrow({
+  async getSponsorshipScopeInOrg(sponsorshipId: string, organizationId: string, tx?: Tx) {
+    return this.db(tx).sponsorship.findFirstOrThrow({
       where: { id: sponsorshipId, organizationId },
       select: { id: true, eventId: true },
     });
   }
 
-  async assertAssigneeInOrg(userId: string, organizationId: string) {
-    await this.prisma.orgMembership.findFirstOrThrow({
+  async assertAssigneeInOrg(userId: string, organizationId: string, tx?: Tx) {
+    await this.db(tx).orgMembership.findFirstOrThrow({
       where: { userId, organizationId },
       select: { id: true },
     });
   }
 
-  createTask(data: Prisma.TaskUncheckedCreateInput): Promise<TaskWithRelations> {
-    return this.prisma.task.create({
+  createTask(data: Prisma.TaskUncheckedCreateInput, tx?: Tx): Promise<TaskWithRelations> {
+    return this.db(tx).task.create({
       data,
       include: taskInclude,
     });
   }
 
-  listTasksByOrg(params: {
-    organizationId: string;
-    eventId?: string;
-    status?: TaskStatus;
-    priority?: TaskPriority;
-    type?: TaskType;
-    assigneeId?: string;
-    search?: string;
-  }): Promise<TaskWithRelations[]> {
+  async getLastTaskPosition(
+    organizationId: string,
+    status: TaskStatus,
+    tx?: Tx,
+  ): Promise<number> {
+    const lastTask = await this.db(tx).task.findFirst({
+      where: { organizationId, status },
+      orderBy: [{ position: "desc" }, { createdAt: "desc" }, { id: "desc" }],
+      select: { position: true },
+    });
+
+    return lastTask?.position ?? -1;
+  }
+
+  async listTasksByOrg(params: ListTasksParams): Promise<TaskWithRelations[]> {
+    const andFilters: Prisma.TaskWhereInput[] = [];
+
+    if (params.labels && params.labels.length > 0) {
+      andFilters.push({
+        OR: [
+          { labels: { hasSome: params.labels } },
+          { relatedLabel: { in: params.labels } },
+        ],
+      });
+    }
+
+    if (params.search?.trim()) {
+      const search = params.search.trim();
+      andFilters.push({
+        OR: [
+          { title: { contains: search, mode: "insensitive" } },
+          { description: { contains: search, mode: "insensitive" } },
+          { relatedLabel: { contains: search, mode: "insensitive" } },
+          { labels: { has: search } },
+        ],
+      });
+    }
+
     const where: Prisma.TaskWhereInput = {
       organizationId: params.organizationId,
       ...(params.eventId ? { eventId: params.eventId } : {}),
-      ...(params.status ? { status: params.status } : {}),
-      ...(params.priority ? { priority: params.priority } : {}),
-      ...(params.type ? { type: params.type } : {}),
-      ...(params.assigneeId ? { assignedToId: params.assigneeId } : {}),
-      ...(params.search
-        ? {
-            OR: [
-              { title: { contains: params.search, mode: "insensitive" } },
-              { description: { contains: params.search, mode: "insensitive" } },
-              { relatedLabel: { contains: params.search, mode: "insensitive" } },
-            ],
-          }
+      ...(params.statuses && params.statuses.length > 0
+        ? { status: { in: params.statuses } }
         : {}),
+      ...(params.priority ? { priority: params.priority } : {}),
+      ...(params.types && params.types.length > 0 ? { type: { in: params.types } } : {}),
+      ...(params.assigneeId ? { assignedToId: params.assigneeId } : {}),
+      ...(andFilters.length > 0 ? { AND: andFilters } : {}),
     };
 
     return this.prisma.task.findMany({
       where,
-      orderBy: [{ updatedAt: "desc" }],
+      orderBy: [{ status: "asc" }, { position: "asc" }, { updatedAt: "desc" }],
       include: taskInclude,
     });
   }
 
-  getTaskOrThrow(taskId: string, organizationId: string): Promise<TaskWithRelations> {
-    return this.prisma.task.findFirstOrThrow({
+  getTaskOrThrow(taskId: string, organizationId: string, tx?: Tx): Promise<TaskWithRelations> {
+    return this.db(tx).task.findFirstOrThrow({
       where: { id: taskId, organizationId },
       include: taskInclude,
+    });
+  }
+
+  getTaskScopeOrThrow(
+    taskId: string,
+    organizationId: string,
+    tx?: Tx,
+  ): Promise<LaneTask & { eventId: string | null; title: string }> {
+    return this.db(tx).task.findFirstOrThrow({
+      where: { id: taskId, organizationId },
+      select: {
+        ...laneTaskSelect,
+        eventId: true,
+        title: true,
+      },
+    });
+  }
+
+  listTasksInLane(
+    organizationId: string,
+    status: TaskStatus,
+    tx?: Tx,
+  ): Promise<LaneTask[]> {
+    return this.db(tx).task.findMany({
+      where: { organizationId, status },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }, { id: "asc" }],
+      select: laneTaskSelect,
     });
   }
 
   updateTask(params: {
     taskId: string;
     data: Prisma.TaskUncheckedUpdateInput;
+    tx?: Tx;
   }): Promise<TaskWithRelations> {
-    return this.prisma.task.update({
+    return this.db(params.tx).task.update({
       where: { id: params.taskId },
       data: params.data,
       include: taskInclude,
     });
   }
 
-  addComment(params: { taskId: string; authorId: string; body: string }) {
-    return this.prisma.taskComment.create({
+  updateTaskOrder(params: {
+    taskId: string;
+    status: TaskStatus;
+    position: number;
+    completedAt: Date | null;
+    tx: Tx;
+  }) {
+    return params.tx.task.update({
+      where: { id: params.taskId },
+      data: {
+        status: params.status,
+        position: params.position,
+        completedAt: params.completedAt,
+      },
+      select: { id: true },
+    });
+  }
+
+  addComment(
+    params: {
+      taskId: string;
+      authorId: string;
+      body: string;
+      message?: string | null;
+      imageUrl?: string | null;
+      imageKey?: string | null;
+    },
+    tx?: Tx,
+  ) {
+    return this.db(tx).taskComment.create({
       data: {
         taskId: params.taskId,
         authorId: params.authorId,
         body: params.body,
+        message: params.message ?? null,
+        imageUrl: params.imageUrl ?? null,
+        imageKey: params.imageKey ?? null,
       },
-      include: { author: true },
+      include: taskCommentInclude,
     });
   }
 
@@ -151,7 +286,47 @@ export class TasksRepository {
     return this.prisma.taskComment.findMany({
       where: { taskId },
       orderBy: { createdAt: "asc" },
-      include: { author: true },
+      include: taskCommentInclude,
+    });
+  }
+
+  createTaskActivity(
+    params: {
+      organizationId: string;
+      taskId: string;
+      kind: TaskActivityKind;
+      message?: string | null;
+      imageUrl?: string | null;
+      imageKey?: string | null;
+      createdById?: string | null;
+    },
+    tx?: Tx,
+  ): Promise<TaskActivityWithRelations> {
+    return this.db(tx).taskActivity.create({
+      data: {
+        organizationId: params.organizationId,
+        taskId: params.taskId,
+        kind: params.kind,
+        message: params.message ?? null,
+        imageUrl: params.imageUrl ?? null,
+        imageKey: params.imageKey ?? null,
+        createdById: params.createdById ?? null,
+      },
+      include: taskActivityInclude,
+    });
+  }
+
+  listTaskActivity(params: {
+    organizationId: string;
+    taskId: string;
+  }): Promise<TaskActivityWithRelations[]> {
+    return this.prisma.taskActivity.findMany({
+      where: {
+        organizationId: params.organizationId,
+        taskId: params.taskId,
+      },
+      orderBy: { createdAt: "asc" },
+      include: taskActivityInclude,
     });
   }
 

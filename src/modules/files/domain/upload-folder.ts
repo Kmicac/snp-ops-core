@@ -3,6 +3,8 @@ export const STATIC_UPLOAD_FOLDERS = [
   "assets",
   "assets-qr",
   "inventory-qr",
+  "tasks",
+  "tasks-comments",
 ] as const;
 
 export type StaticUploadFolder = (typeof STATIC_UPLOAD_FOLDERS)[number];

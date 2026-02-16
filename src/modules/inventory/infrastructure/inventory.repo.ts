@@ -211,6 +211,77 @@ export class InventoryRepo {
     });
   }
 
+  async countActiveCheckoutsForAsset(params: {
+    organizationId: string;
+    assetId: string;
+  }): Promise<number> {
+    return this.prisma.assetUsage.count({
+      where: {
+        assetId: params.assetId,
+        movementType: InventoryMovementType.CHECK_OUT,
+        returnedAt: null,
+        asset: { organizationId: params.organizationId },
+      },
+    });
+  }
+
+  async countAnyUsagesForAsset(params: {
+    organizationId: string;
+    assetId: string;
+  }): Promise<number> {
+    return this.prisma.assetUsage.count({
+      where: {
+        assetId: params.assetId,
+        asset: { organizationId: params.organizationId },
+      },
+    });
+  }
+
+  async countKitItemsForAsset(params: {
+    organizationId: string;
+    assetId: string;
+  }): Promise<number> {
+    return this.prisma.inventoryKitItem.count({
+      where: {
+        assetId: params.assetId,
+        kit: { organizationId: params.organizationId },
+      },
+    });
+  }
+
+  async countChecklistItemsForAsset(params: {
+    organizationId: string;
+    assetId: string;
+  }): Promise<number> {
+    return this.prisma.inventoryChecklistItem.count({
+      where: {
+        assetId: params.assetId,
+        checklist: { organizationId: params.organizationId },
+      },
+    });
+  }
+
+  async countEventResourcesForAsset(params: {
+    organizationId: string;
+    assetId: string;
+  }): Promise<number> {
+    return this.prisma.eventResource.count({
+      where: {
+        organizationId: params.organizationId,
+        assetId: params.assetId,
+      },
+    });
+  }
+
+  async deleteAsset(params: {
+    organizationId: string;
+    assetId: string;
+  }): Promise<void> {
+    await this.prisma.asset.deleteMany({
+      where: { id: params.assetId, organizationId: params.organizationId },
+    });
+  }
+
   // -------- Assertions --------
 
   async assertEventInOrg(eventId: string, organizationId: string): Promise<{ id: string; name: string }> {

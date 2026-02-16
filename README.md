@@ -44,6 +44,95 @@ $ pnpm run start:dev
 $ pnpm run start:prod
 ```
 
+## Tasks board backend (seed + quick checks)
+
+```bash
+# apply migrations
+pnpm prisma migrate deploy
+
+# regenerate Prisma Client
+pnpm prisma generate
+
+# seed base data + tasks board/activity demo data
+pnpm prisma db seed
+```
+
+Variables used by seed:
+- `DATABASE_URL`
+- `ADMIN_EMAIL`
+- `ADMIN_INITIAL_PASSWORD`
+
+Quick `curl` checks (replace `TOKEN` and `ORG_ID`):
+
+```bash
+export API_URL=http://localhost:3001
+export TOKEN=your_jwt
+export ORG_ID=org_snp
+```
+
+```bash
+# 1) list tasks with multi-filters (expected: 200)
+curl -i -X GET \
+  "$API_URL/orgs/$ORG_ID/tasks?status=TODO&status=IN_PROGRESS&types=GENERAL,INCIDENT&labels=improvements,security&q=operativo" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+```bash
+# 2) create task with optional image (expected: 201)
+curl -i -X POST "$API_URL/orgs/$ORG_ID/tasks" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Cloud hardening sprint",
+    "status": "TODO",
+    "type": "GENERAL",
+    "labels": ["improvements", "security"],
+    "imageUrl": "https://cdn.snp.local/tasks/demo.jpg",
+    "imageKey": "tasks/demo.jpg"
+  }'
+```
+
+```bash
+# 3) patch task fields/status/position (expected: 200)
+curl -i -X PATCH "$API_URL/orgs/$ORG_ID/tasks/TASK_ID" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "IN_PROGRESS",
+    "position": 1,
+    "title": "Cloud hardening sprint - phase 2"
+  }'
+```
+
+```bash
+# 4) move/reorder task with persistent position (expected: 200)
+curl -i -X POST "$API_URL/orgs/$ORG_ID/tasks/TASK_ID/move" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "status": "BLOCKED",
+    "position": 0
+  }'
+```
+
+```bash
+# 5) add comment with image (message optional, expected: 201)
+curl -i -X POST "$API_URL/orgs/$ORG_ID/tasks/TASK_ID/comments" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "message": "Adjunto evidencia del ajuste",
+    "imageUrl": "https://cdn.snp.local/tasks-comments/demo.jpg",
+    "imageKey": "tasks-comments/demo.jpg"
+  }'
+```
+
+```bash
+# 6) list task activity COMMENT/UPDATE (expected: 200)
+curl -i -X GET "$API_URL/orgs/$ORG_ID/tasks/TASK_ID/activity" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
 ## Run tests
 
 ```bash

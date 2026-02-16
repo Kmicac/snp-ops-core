@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req } from "@nestjs/common";
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query, Req } from "@nestjs/common";
 import { OrgRole } from "@prisma/client";
 import { Roles } from "src/modules/auth/security/roles.decorator";
 import { TasksService } from "../application/tasks.service";
@@ -32,6 +32,10 @@ export class TasksController {
       type: dto.type,
       status: dto.status,
       priority: dto.priority,
+      labels: dto.labels,
+      imageUrl: dto.imageUrl,
+      imageKey: dto.imageKey,
+      position: dto.position,
       dueDate: dto.dueDate,
       dueAt: dto.dueAt,
       eventId: dto.eventId,
@@ -60,18 +64,16 @@ export class TasksController {
     OrgRole.GUADA,
   )
   @Get()
-  listTasks(
-    @Param("orgId") orgId: string,
-    @Query() query: ListTasksQueryDto,
-  ) {
+  listTasks(@Param("orgId") orgId: string, @Query() query: ListTasksQueryDto) {
     return this.service.listTasksByOrg({
       organizationId: orgId,
       eventId: query.eventId,
       status: query.status,
       priority: query.priority,
-      type: query.type,
+      type: query.types ?? (query.type ? [query.type] : undefined),
+      labels: query.labels,
       assigneeId: query.assigneeId ?? query.assignedToId,
-      search: query.search,
+      search: query.q ?? query.search,
     });
   }
 
@@ -84,10 +86,7 @@ export class TasksController {
     OrgRole.GUADA,
   )
   @Get(":taskId")
-  getTask(
-    @Param("orgId") orgId: string,
-    @Param("taskId") taskId: string,
-  ) {
+  getTask(@Param("orgId") orgId: string, @Param("taskId") taskId: string) {
     return this.service.getTask({ organizationId: orgId, taskId });
   }
 
@@ -112,6 +111,10 @@ export class TasksController {
         type: dto.type,
         status: dto.status,
         priority: dto.priority,
+        labels: dto.labels,
+        imageUrl: dto.imageUrl,
+        imageKey: dto.imageKey,
+        position: dto.position,
         dueDate: dto.dueDate,
         dueAt: dto.dueAt,
         eventId: dto.eventId,
@@ -134,26 +137,39 @@ export class TasksController {
   }
 
   @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
-  @Patch(":taskId/move")
-  moveTask(
+  @Post(":taskId/move")
+  @HttpCode(200)
+  moveTaskPost(
     @Param("orgId") orgId: string,
     @Param("taskId") taskId: string,
     @Body() dto: MoveTaskDto,
     @Req() req: any,
   ) {
-    const userId = req.user?.sub ?? null;
-    const ip = req.ip ?? null;
-    const userAgent = req.headers["user-agent"] ?? null;
+    return this.moveTaskInternal(orgId, taskId, dto, req);
+  }
 
-    return this.service.moveTask({
-      organizationId: orgId,
-      taskId,
-      newStatus: dto.newStatus,
-      overTaskId: dto.overTaskId,
-      performedByUserId: userId,
-      ip,
-      userAgent: typeof userAgent === "string" ? userAgent : null,
-    });
+  @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
+  @Patch(":taskId/move")
+  moveTaskPatch(
+    @Param("orgId") orgId: string,
+    @Param("taskId") taskId: string,
+    @Body() dto: MoveTaskDto,
+    @Req() req: any,
+  ) {
+    return this.moveTaskInternal(orgId, taskId, dto, req);
+  }
+
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.HR,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.HEAD_REFEREE,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
+  @Get(":taskId/activity")
+  listActivity(@Param("orgId") orgId: string, @Param("taskId") taskId: string) {
+    return this.service.listActivity({ organizationId: orgId, taskId });
   }
 
   @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
@@ -174,6 +190,8 @@ export class TasksController {
       authorId: userId,
       message: dto.message,
       body: dto.body,
+      imageUrl: dto.imageUrl,
+      imageKey: dto.imageKey,
       ip,
       userAgent: typeof userAgent === "string" ? userAgent : null,
     });
@@ -188,10 +206,7 @@ export class TasksController {
     OrgRole.GUADA,
   )
   @Get(":taskId/comments")
-  listComments(
-    @Param("orgId") orgId: string,
-    @Param("taskId") taskId: string,
-  ) {
+  listComments(@Param("orgId") orgId: string, @Param("taskId") taskId: string) {
     return this.service.listComments({ organizationId: orgId, taskId });
   }
 
@@ -233,6 +248,25 @@ export class TasksController {
       organizationId: orgId,
       taskId,
       itemId,
+      performedByUserId: userId,
+      ip,
+      userAgent: typeof userAgent === "string" ? userAgent : null,
+    });
+  }
+
+  private moveTaskInternal(orgId: string, taskId: string, dto: MoveTaskDto, req: any) {
+    const userId = req.user?.sub ?? null;
+    const ip = req.ip ?? null;
+    const userAgent = req.headers["user-agent"] ?? null;
+
+    return this.service.moveTask({
+      organizationId: orgId,
+      taskId,
+      newStatus: dto.status ?? dto.newStatus,
+      position: dto.position,
+      beforeTaskId: dto.beforeTaskId,
+      afterTaskId: dto.afterTaskId,
+      overTaskId: dto.overTaskId,
       performedByUserId: userId,
       ip,
       userAgent: typeof userAgent === "string" ? userAgent : null,

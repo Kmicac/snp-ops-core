@@ -11,4 +11,12 @@ export class CreateTaskCommentDto {
   @IsString()
   @Length(1, 2000)
   body?: string;
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  imageKey?: string;
 }

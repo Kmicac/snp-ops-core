@@ -36,7 +36,7 @@ export class FilesController {
 
     if (!isAllowedUploadFolder(dto.folder)) {
       throw new BadRequestException(
-        "Invalid folder. Allowed: partners, assets, assets-qr, inventory-qr, orgs/*, events/*",
+        "Invalid folder. Allowed: partners, assets, assets-qr, inventory-qr, tasks, tasks-comments, orgs/*, events/*",
       );
     }
 

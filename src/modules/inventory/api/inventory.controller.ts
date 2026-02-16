@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -140,6 +141,17 @@ export class InventoryController {
       },
       this.actorFromRequest(req),
     );
+  }
+
+  @Roles(...MANAGE_ROLES)
+  @Delete("orgs/:orgId/assets/:assetId")
+  @HttpCode(204)
+  async deleteAsset(
+    @Param("orgId") orgId: string,
+    @Param("assetId") assetId: string,
+    @Req() req: any,
+  ) {
+    await this.service.deleteAsset(orgId, assetId, this.actorFromRequest(req));
   }
 
   @Roles(...MANAGE_ROLES)

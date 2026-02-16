@@ -207,6 +207,11 @@ enum TaskType {
   INVENTORY
 }
 
+enum TaskActivityKind {
+  COMMENT
+  UPDATE
+}
+
 enum NotificationChannel {
   EMAIL
   WHATSAPP_WEBHOOK
@@ -236,6 +241,7 @@ model Organization {
   auditLogs    AuditLog[]
   improvements Improvement[]
   tasks        Task[]
+  taskActivities TaskActivity[]
   eventResources EventResource[]
   notificationRules      NotificationRule[]
   notificationDeliveries NotificationDelivery[]
@@ -435,6 +441,7 @@ model User {
   tasksCreated Task[]         @relation("TaskCreatedBy")
   tasksAssigned Task[]        @relation("TaskAssignedTo")
   taskComments TaskComment[]
+  taskActivitiesCreated TaskActivity[] @relation("TaskActivityCreatedBy")
 
   // lado inverso de PartnerSponsorApplication.reviewedBy
   reviewedApplications PartnerSponsorApplication[]
@@ -661,12 +668,16 @@ model Task {
   improvementId  String?
   sponsorshipId  String?
   relatedLabel   String?
+  labels         String[]     @default([])
 
   title       String
   description String?
   type        TaskType       @default(GENERAL)
   status      TaskStatus     @default(TODO)
   priority    TaskPriority   @default(MEDIUM)
+  position    Int            @default(0)
+  imageUrl    String?
+  imageKey    String?
 
   dueAt       DateTime?
   completedAt DateTime?
@@ -690,8 +701,11 @@ model Task {
 
   comments  TaskComment[]
   checklist TaskChecklistItem[]
+  activities TaskActivity[]
 
   @@index([organizationId])
+  @@index([organizationId, status, position])
+  @@index([organizationId, type])
   @@index([eventId])
   @@index([status])
   @@index([assignedToId])
@@ -704,13 +718,37 @@ model TaskComment {
   id        String   @id @default(cuid())
   taskId    String
   authorId  String
-  body      String
+  body      String   @default("")
+  message   String?
+  imageUrl  String?
+  imageKey  String?
   createdAt DateTime @default(now())
 
   task   Task @relation(fields: [taskId], references: [id])
   author User @relation(fields: [authorId], references: [id])
 
   @@index([taskId])
+  @@index([taskId, createdAt])
+}
+
+model TaskActivity {
+  id             String           @id @default(cuid())
+  organizationId String
+  taskId         String
+  kind           TaskActivityKind
+  message        String?
+  imageUrl       String?
+  imageKey       String?
+  createdById    String?
+  createdAt      DateTime         @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  task         Task         @relation(fields: [taskId], references: [id])
+  createdBy    User?        @relation("TaskActivityCreatedBy", fields: [createdById], references: [id])
+
+  @@index([organizationId, createdAt])
+  @@index([taskId, createdAt])
+  @@index([kind])
 }
 
 model TaskChecklistItem {
@@ -934,6 +972,7 @@ model Asset {
   @@index([organizationId])
   @@index([categoryId])
   @@index([status])
+  @@unique([organizationId, assetTag])
 }
 
 model AssetUsage {

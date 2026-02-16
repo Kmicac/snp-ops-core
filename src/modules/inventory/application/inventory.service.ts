@@ -358,6 +358,67 @@ export class InventoryService {
     return updated;
   }
 
+  async deleteAsset(
+    organizationId: string,
+    assetId: string,
+    actor?: {
+      userId?: string | null;
+      ip?: string | null;
+      userAgent?: string | null;
+    },
+  ) {
+    const current = await this.repo.getAssetOrThrow(assetId, organizationId);
+
+    const activeUsages = await this.repo.countActiveCheckoutsForAsset({
+      organizationId,
+      assetId,
+    });
+
+    if (activeUsages > 0) {
+      throw new ConflictException(
+        "Asset has active usage and cannot be deleted until it is returned",
+      );
+    }
+
+    const [kitRefs, checklistRefs, eventResourceRefs, anyUsages] = await Promise.all([
+      this.repo.countKitItemsForAsset({ organizationId, assetId }),
+      this.repo.countChecklistItemsForAsset({ organizationId, assetId }),
+      this.repo.countEventResourcesForAsset({ organizationId, assetId }),
+      this.repo.countAnyUsagesForAsset({ organizationId, assetId }),
+    ]);
+
+    if (kitRefs > 0 || checklistRefs > 0) {
+      throw new ConflictException(
+        "Asset is referenced by inventory kit/checklist items and cannot be deleted",
+      );
+    }
+
+    // No soft-delete column exists in schema, so historical references block hard delete.
+    if (eventResourceRefs > 0 || anyUsages > 0) {
+      throw new ConflictException(
+        "Asset has historical references and cannot be deleted",
+      );
+    }
+
+    await this.repo.deleteAsset({ organizationId, assetId });
+
+    await this.audit.log({
+      organizationId,
+      userId: actor?.userId ?? null,
+      entityType: AuditEntityType.INVENTORY_ASSET,
+      entityId: current.id,
+      action: AuditActionType.DELETED,
+      message: `INVENTORY_ASSET_DELETED: ${current.name}`,
+      changes: {
+        assetTag: current.assetTag,
+        status: current.status,
+        condition: current.condition,
+      },
+      ip: actor?.ip ?? null,
+      userAgent: actor?.userAgent ?? null,
+    });
+  }
+
   async checkoutAsset(params: {
     organizationId: string;
     assetId: string;

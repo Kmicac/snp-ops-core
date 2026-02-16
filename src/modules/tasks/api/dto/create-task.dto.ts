@@ -1,10 +1,14 @@
 import {
+  ArrayUnique,
   IsDateString,
+  IsInt,
+  IsArray,
   IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
   Length,
+  Min,
 } from "class-validator";
 import { TaskPriority, TaskStatus, TaskType } from "@prisma/client";
 
@@ -29,6 +33,26 @@ export class CreateTaskDto {
   @IsOptional()
   @IsEnum(TaskPriority)
   priority?: TaskPriority;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  @Length(1, 40, { each: true })
+  labels?: string[];
+
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
+  @IsOptional()
+  @IsString()
+  imageKey?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  position?: number;
 
   @IsOptional()
   @IsDateString()
