@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import {
   Prisma,
   TaskActivityKind,
@@ -14,7 +14,7 @@ const taskCommentInclude = Prisma.validator<Prisma.TaskCommentInclude>()({
 
 export const taskInclude = Prisma.validator<Prisma.TaskInclude>()({
   createdBy: true,
-  assignedTo: true,
+  assignedToStaffMember: true,
   event: true,
   zone: true,
   workOrder: true,
@@ -89,9 +89,13 @@ export class TasksRepository {
   }
 
   async assertZoneInOrg(zoneId: string, organizationId: string, tx?: Tx) {
-    await this.db(tx).zone.findFirstOrThrow({
+    await this.getZoneScopeInOrg(zoneId, organizationId, tx);
+  }
+
+  getZoneScopeInOrg(zoneId: string, organizationId: string, tx?: Tx) {
+    return this.db(tx).zone.findFirstOrThrow({
       where: { id: zoneId, event: { organizationId } },
-      select: { id: true },
+      select: { id: true, eventId: true },
     });
   }
 
@@ -123,11 +127,49 @@ export class TasksRepository {
     });
   }
 
-  async assertAssigneeInOrg(userId: string, organizationId: string, tx?: Tx) {
-    await this.db(tx).orgMembership.findFirstOrThrow({
-      where: { userId, organizationId },
+  async assertAssigneeStaffInScope(
+    staffMemberId: string,
+    organizationId: string,
+    eventId?: string | null,
+    tx?: Tx,
+  ) {
+    const staff = await this.db(tx).staffMember.findFirst({
+      where: {
+        id: staffMemberId,
+        organizationId,
+      },
       select: { id: true },
     });
+
+    if (!staff) {
+      throw new NotFoundException("Assignee staff member not found in organization");
+    }
+
+    if (!eventId) return;
+
+    const [assignment, eventResource] = await Promise.all([
+      this.db(tx).staffAssignment.findFirst({
+        where: {
+          eventId,
+          staffMemberId,
+        },
+        select: { id: true },
+      }),
+      this.db(tx).eventResource.findFirst({
+        where: {
+          organizationId,
+          eventId,
+          staffMemberId,
+        },
+        select: { id: true },
+      }),
+    ]);
+
+    if (!assignment && !eventResource) {
+      throw new ConflictException(
+        "assigneeId must be assigned to the task event via staff assignment or event resource",
+      );
+    }
   }
 
   createTask(data: Prisma.TaskUncheckedCreateInput, tx?: Tx): Promise<TaskWithRelations> {
@@ -183,7 +225,9 @@ export class TasksRepository {
         : {}),
       ...(params.priority ? { priority: params.priority } : {}),
       ...(params.types && params.types.length > 0 ? { type: { in: params.types } } : {}),
-      ...(params.assigneeId ? { assignedToId: params.assigneeId } : {}),
+      ...(params.assigneeId
+        ? { assignedToStaffMemberId: params.assigneeId }
+        : {}),
       ...(andFilters.length > 0 ? { AND: andFilters } : {}),
     };
 

@@ -7,6 +7,10 @@ import {
   InventoryChecklistType,
   OrgRole,
   PrismaClient,
+  StaffRole,
+  TaskPriority,
+  TaskStatus,
+  TaskType,
 } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcrypt";
@@ -72,6 +76,30 @@ type SeedChecklist = {
     condition: InventoryChecklistItemCondition;
     notes?: string;
   }>;
+};
+
+type SeedStaffMember = {
+  id: string;
+  fullName: string;
+  role: StaffRole;
+  email?: string;
+  phone?: string;
+  documentId?: string;
+  notes?: string;
+  eventCodes: string[];
+};
+
+type SeedTask = {
+  id: string;
+  title: string;
+  description?: string;
+  eventCode: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  type: TaskType;
+  assigneeStaffMemberId: string;
+  labels?: string[];
+  dueAt?: string;
 };
 
 function createPrisma() {
@@ -376,6 +404,42 @@ const checklists: SeedChecklist[] = [
   },
 ];
 
+const staffMembers: SeedStaffMember[] = [
+  { id: "staff_seed_ops_01", fullName: "Camila Rojas", role: StaffRole.PRODUCTION, email: "camila.rojas@snp.local", eventCodes: ["OPEN_ADCC_BUENOS_AIRES_2026", "AJP_TOUR_NACIONAL_SANTIAGO_2026"] },
+  { id: "staff_seed_ops_02", fullName: "Matias Cabrera", role: StaffRole.LOGISTICS, email: "matias.cabrera@snp.local", eventCodes: ["OPEN_ADCC_BUENOS_AIRES_2026", "OPEN_ADCC_CARACAS_2026"] },
+  { id: "staff_seed_ops_03", fullName: "Lucia Nunez", role: StaffRole.STAFF, email: "lucia.nunez@snp.local", eventCodes: ["OPEN_ADCC_BUENOS_AIRES_2026"] },
+  { id: "staff_seed_ops_04", fullName: "Diego Acosta", role: StaffRole.SECURITY, email: "diego.acosta@snp.local", eventCodes: ["OPEN_ADCC_BUENOS_AIRES_2026", "OPEN_ADCC_CARACAS_2026"] },
+  { id: "staff_seed_ops_05", fullName: "Agustina Vera", role: StaffRole.OTHER, email: "agustina.vera@snp.local", eventCodes: ["OPEN_ADCC_BUENOS_AIRES_2026"] },
+  { id: "staff_seed_ops_06", fullName: "Sofia Molina", role: StaffRole.TICKETING, email: "sofia.molina@snp.local", eventCodes: ["AJP_TOUR_NACIONAL_SANTIAGO_2026", "OPEN_ADCC_CARACAS_2026"] },
+  { id: "staff_seed_ops_07", fullName: "Nicolas Bravo", role: StaffRole.LOGISTICS, email: "nicolas.bravo@snp.local", eventCodes: ["AJP_TOUR_NACIONAL_SANTIAGO_2026"] },
+  { id: "staff_seed_ops_08", fullName: "Paula Diaz", role: StaffRole.STAFF, email: "paula.diaz@snp.local", eventCodes: ["AJP_TOUR_NACIONAL_SANTIAGO_2026"] },
+  { id: "staff_seed_ops_09", fullName: "Franco Ortega", role: StaffRole.REFEREE, email: "franco.ortega@snp.local", eventCodes: ["AJP_TOUR_NACIONAL_SANTIAGO_2026", "OPEN_ADCC_CARACAS_2026"] },
+  { id: "staff_seed_ops_10", fullName: "Micaela Soto", role: StaffRole.SECURITY, email: "micaela.soto@snp.local", eventCodes: ["AJP_TOUR_NACIONAL_SANTIAGO_2026"] },
+  { id: "staff_seed_ops_11", fullName: "Lautaro Paz", role: StaffRole.STAFF, email: "lautaro.paz@snp.local", eventCodes: ["OPEN_ADCC_CARACAS_2026"] },
+  { id: "staff_seed_ops_12", fullName: "Julieta Benitez", role: StaffRole.LOGISTICS, email: "julieta.benitez@snp.local", eventCodes: ["OPEN_ADCC_CARACAS_2026"] },
+  { id: "staff_seed_ops_13", fullName: "Ezequiel Ramirez", role: StaffRole.PRODUCTION, email: "ezequiel.ramirez@snp.local", eventCodes: ["OPEN_ADCC_CARACAS_2026"] },
+  { id: "staff_seed_ops_14", fullName: "Valentina Prieto", role: StaffRole.STAFF, email: "valentina.prieto@snp.local", eventCodes: ["OPEN_ADCC_CARACAS_2026"] },
+  { id: "staff_seed_ops_15", fullName: "Thiago Farias", role: StaffRole.MEDIC, email: "thiago.farias@snp.local", eventCodes: ["OPEN_ADCC_BUENOS_AIRES_2026", "OPEN_ADCC_CARACAS_2026"] },
+  { id: "staff_seed_ops_16", fullName: "Milagros Ibarra", role: StaffRole.CLEANING, email: "milagros.ibarra@snp.local", eventCodes: ["OPEN_ADCC_BUENOS_AIRES_2026", "AJP_TOUR_NACIONAL_SANTIAGO_2026"] },
+  { id: "staff_seed_ops_17", fullName: "Bruno Salas", role: StaffRole.REFEREE, email: "bruno.salas@snp.local", eventCodes: ["OPEN_ADCC_BUENOS_AIRES_2026"] },
+  { id: "staff_seed_ops_18", fullName: "Florencia Quiroga", role: StaffRole.OTHER, email: "florencia.quiroga@snp.local", eventCodes: ["AJP_TOUR_NACIONAL_SANTIAGO_2026", "OPEN_ADCC_CARACAS_2026"] },
+];
+
+const seededTasks: SeedTask[] = [
+  { id: "task_seed_ops_001", title: "Configurar switcher principal", description: "Verificar entradas SDI y macros de escena.", eventCode: "OPEN_ADCC_BUENOS_AIRES_2026", status: TaskStatus.TODO, priority: TaskPriority.HIGH, type: TaskType.GENERAL, assigneeStaffMemberId: "staff_seed_ops_01", labels: ["video", "broadcast"], dueAt: "2026-04-17T18:00:00.000Z" },
+  { id: "task_seed_ops_002", title: "Control de inventario de audio", description: "Confirmar kits de entrevistas y backup.", eventCode: "OPEN_ADCC_BUENOS_AIRES_2026", status: TaskStatus.TODO, priority: TaskPriority.MEDIUM, type: TaskType.INVENTORY, assigneeStaffMemberId: "staff_seed_ops_02", labels: ["audio", "inventory"], dueAt: "2026-04-17T19:00:00.000Z" },
+  { id: "task_seed_ops_003", title: "Acreditaciones staff puerta norte", description: "Validar credenciales y flujo de accesos.", eventCode: "OPEN_ADCC_BUENOS_AIRES_2026", status: TaskStatus.IN_PROGRESS, priority: TaskPriority.HIGH, type: TaskType.GENERAL, assigneeStaffMemberId: "staff_seed_ops_04", labels: ["access"], dueAt: "2026-04-18T12:30:00.000Z" },
+  { id: "task_seed_ops_004", title: "Plan de contingencia de energía", description: "Probar UPS de NOC y control room.", eventCode: "OPEN_ADCC_BUENOS_AIRES_2026", status: TaskStatus.BLOCKED, priority: TaskPriority.CRITICAL, type: TaskType.GENERAL, assigneeStaffMemberId: "staff_seed_ops_15", labels: ["power", "risk"] },
+  { id: "task_seed_ops_005", title: "Checklist final de tatamis", description: "Confirmar setup operativo antes de apertura.", eventCode: "OPEN_ADCC_BUENOS_AIRES_2026", status: TaskStatus.DONE, priority: TaskPriority.MEDIUM, type: TaskType.REFEREE, assigneeStaffMemberId: "staff_seed_ops_17", labels: ["tatami"], dueAt: "2026-04-18T08:00:00.000Z" },
+  { id: "task_seed_ops_006", title: "Briefing logística carga-in", description: "Coordinar horarios de ingreso de proveedores.", eventCode: "AJP_TOUR_NACIONAL_SANTIAGO_2026", status: TaskStatus.TODO, priority: TaskPriority.MEDIUM, type: TaskType.WORK_ORDER, assigneeStaffMemberId: "staff_seed_ops_07", labels: ["logistics"], dueAt: "2026-05-15T17:00:00.000Z" },
+  { id: "task_seed_ops_007", title: "Cobertura de incidencias en pista", description: "Registrar y escalar incidencias críticas.", eventCode: "AJP_TOUR_NACIONAL_SANTIAGO_2026", status: TaskStatus.IN_PROGRESS, priority: TaskPriority.HIGH, type: TaskType.INCIDENT, assigneeStaffMemberId: "staff_seed_ops_09", labels: ["incident"] },
+  { id: "task_seed_ops_008", title: "Revisión de zonas de limpieza", description: "Validar turnos y stock de insumos.", eventCode: "AJP_TOUR_NACIONAL_SANTIAGO_2026", status: TaskStatus.BLOCKED, priority: TaskPriority.LOW, type: TaskType.GENERAL, assigneeStaffMemberId: "staff_seed_ops_16", labels: ["venue"] },
+  { id: "task_seed_ops_009", title: "Estado de sponsors en LED", description: "Confirmar assets visuales y tiempos de salida.", eventCode: "OPEN_ADCC_CARACAS_2026", status: TaskStatus.TODO, priority: TaskPriority.MEDIUM, type: TaskType.SPONSORSHIP, assigneeStaffMemberId: "staff_seed_ops_13", labels: ["sponsor", "led"] },
+  { id: "task_seed_ops_010", title: "Control de seguridad backstage", description: "Asegurar perímetro y accesos restringidos.", eventCode: "OPEN_ADCC_CARACAS_2026", status: TaskStatus.IN_PROGRESS, priority: TaskPriority.HIGH, type: TaskType.GENERAL, assigneeStaffMemberId: "staff_seed_ops_11", labels: ["security"] },
+  { id: "task_seed_ops_011", title: "Conteo de activos al cierre", description: "Cerrar checklist de retorno por categoría.", eventCode: "OPEN_ADCC_CARACAS_2026", status: TaskStatus.DONE, priority: TaskPriority.MEDIUM, type: TaskType.INVENTORY, assigneeStaffMemberId: "staff_seed_ops_12", labels: ["inventory", "closing"] },
+  { id: "task_seed_ops_012", title: "Reubicación de staff por zona", description: "Actualizar responsables ante cambios de flujo.", eventCode: "OPEN_ADCC_CARACAS_2026", status: TaskStatus.BLOCKED, priority: TaskPriority.HIGH, type: TaskType.GENERAL, assigneeStaffMemberId: "staff_seed_ops_18", labels: ["staffing"] },
+];
+
 const fallbackAssetImageUrls = [
   "https://images.unsplash.com/photo-1516035069371-29a1b244cc32",
   "https://images.unsplash.com/photo-1527443154391-507e9dc6c5cc",
@@ -492,6 +556,175 @@ async function main() {
     }
 
     eventIdByCode.set(eventDef.code, event.id);
+  }
+
+  let createdStaffMembers = 0;
+  let updatedStaffMembers = 0;
+
+  for (const staffMember of staffMembers) {
+    const existing = await prisma.staffMember.findUnique({
+      where: { id: staffMember.id },
+      select: { id: true },
+    });
+
+    await prisma.staffMember.upsert({
+      where: { id: staffMember.id },
+      update: {
+        organizationId: org.id,
+        fullName: staffMember.fullName,
+        documentId: staffMember.documentId ?? null,
+        phone: staffMember.phone ?? null,
+        email: staffMember.email ?? null,
+        notes: staffMember.notes ?? null,
+      },
+      create: {
+        id: staffMember.id,
+        organizationId: org.id,
+        fullName: staffMember.fullName,
+        documentId: staffMember.documentId ?? null,
+        phone: staffMember.phone ?? null,
+        email: staffMember.email ?? null,
+        notes: staffMember.notes ?? null,
+      },
+    });
+
+    if (existing) {
+      updatedStaffMembers += 1;
+    } else {
+      createdStaffMembers += 1;
+    }
+  }
+
+  let createdStaffAssignments = 0;
+  let updatedStaffAssignments = 0;
+
+  for (const staffMember of staffMembers) {
+    for (const eventCode of staffMember.eventCodes) {
+      const eventId = eventIdByCode.get(eventCode);
+      if (!eventId) {
+        throw new Error(`Missing event for staff assignment eventCode=${eventCode}`);
+      }
+
+      const assignmentId = `staff_assignment_${staffMember.id}_${eventCode}`.toLowerCase();
+      const existing = await prisma.staffAssignment.findUnique({
+        where: { id: assignmentId },
+        select: { id: true },
+      });
+
+      await prisma.staffAssignment.upsert({
+        where: { id: assignmentId },
+        update: {
+          eventId,
+          staffMemberId: staffMember.id,
+          role: staffMember.role,
+          zoneId: null,
+          shiftId: null,
+          startsAt: null,
+          endsAt: null,
+        },
+        create: {
+          id: assignmentId,
+          eventId,
+          staffMemberId: staffMember.id,
+          role: staffMember.role,
+          zoneId: null,
+          shiftId: null,
+          startsAt: null,
+          endsAt: null,
+        },
+      });
+
+      if (existing) {
+        updatedStaffAssignments += 1;
+      } else {
+        createdStaffAssignments += 1;
+      }
+    }
+  }
+
+  const knownStaffIds = new Set(staffMembers.map((staffMember) => staffMember.id));
+  const nextPositionByStatus: Record<TaskStatus, number> = {
+    [TaskStatus.TODO]: 0,
+    [TaskStatus.IN_PROGRESS]: 0,
+    [TaskStatus.BLOCKED]: 0,
+    [TaskStatus.DONE]: 0,
+  };
+
+  let createdTasks = 0;
+  let updatedTasks = 0;
+
+  for (const seededTask of seededTasks) {
+    const eventId = eventIdByCode.get(seededTask.eventCode);
+    if (!eventId) {
+      throw new Error(`Missing event for task eventCode=${seededTask.eventCode}`);
+    }
+
+    if (!knownStaffIds.has(seededTask.assigneeStaffMemberId)) {
+      throw new Error(
+        `Missing staff member for task assignee=${seededTask.assigneeStaffMemberId}`,
+      );
+    }
+
+    const existing = await prisma.task.findUnique({
+      where: { id: seededTask.id },
+      select: { id: true },
+    });
+
+    const position = nextPositionByStatus[seededTask.status];
+    nextPositionByStatus[seededTask.status] += 1;
+
+    const dueAt = seededTask.dueAt ? new Date(seededTask.dueAt) : null;
+    const completedAt =
+      seededTask.status === TaskStatus.DONE
+        ? (dueAt ?? new Date("2026-01-01T00:00:00.000Z"))
+        : null;
+
+    await prisma.task.upsert({
+      where: { id: seededTask.id },
+      update: {
+        organizationId: org.id,
+        eventId,
+        title: seededTask.title,
+        description: seededTask.description ?? null,
+        type: seededTask.type,
+        status: seededTask.status,
+        priority: seededTask.priority,
+        labels: seededTask.labels ?? [],
+        relatedLabel: null,
+        position,
+        imageUrl: null,
+        imageKey: null,
+        dueAt,
+        completedAt,
+        createdById: admin.id,
+        assignedToStaffMemberId: seededTask.assigneeStaffMemberId,
+      },
+      create: {
+        id: seededTask.id,
+        organizationId: org.id,
+        eventId,
+        title: seededTask.title,
+        description: seededTask.description ?? null,
+        type: seededTask.type,
+        status: seededTask.status,
+        priority: seededTask.priority,
+        labels: seededTask.labels ?? [],
+        relatedLabel: null,
+        position,
+        imageUrl: null,
+        imageKey: null,
+        dueAt,
+        completedAt,
+        createdById: admin.id,
+        assignedToStaffMemberId: seededTask.assigneeStaffMemberId,
+      },
+    });
+
+    if (existing) {
+      updatedTasks += 1;
+    } else {
+      createdTasks += 1;
+    }
   }
 
   let createdCategories = 0;
@@ -769,7 +1002,15 @@ async function main() {
     }
   }
 
-  const [eventsCount, eventsTargetCount, categoriesCount, assetsCount] = await Promise.all([
+  const [
+    eventsCount,
+    eventsTargetCount,
+    categoriesCount,
+    assetsCount,
+    staffMembersCount,
+    staffAssignmentsCount,
+    tasksCount,
+  ] = await Promise.all([
     prisma.event.count({ where: { organizationId: org.id } }),
     prisma.event.count({
       where: {
@@ -779,6 +1020,9 @@ async function main() {
     }),
     prisma.assetCategory.count({ where: { organizationId: org.id } }),
     prisma.asset.count({ where: { organizationId: org.id } }),
+    prisma.staffMember.count({ where: { organizationId: org.id } }),
+    prisma.staffAssignment.count({ where: { staffMember: { organizationId: org.id } } }),
+    prisma.task.count({ where: { organizationId: org.id } }),
   ]);
 
   console.log("Seed OK:", {
@@ -790,6 +1034,23 @@ async function main() {
       totalInOrg: eventsCount,
       created: createdEvents,
       updated: updatedEvents,
+    },
+    staffMembers: {
+      target: staffMembers.length,
+      totalInOrg: staffMembersCount,
+      created: createdStaffMembers,
+      updated: updatedStaffMembers,
+    },
+    staffAssignments: {
+      totalInOrg: staffAssignmentsCount,
+      created: createdStaffAssignments,
+      updated: updatedStaffAssignments,
+    },
+    tasks: {
+      target: seededTasks.length,
+      totalInOrg: tasksCount,
+      created: createdTasks,
+      updated: updatedTasks,
     },
     categories: {
       target: assetCategories.length,

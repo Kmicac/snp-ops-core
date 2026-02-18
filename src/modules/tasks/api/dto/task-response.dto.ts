@@ -49,6 +49,8 @@ export type TaskResponseDto = {
   position: number;
   imageUrl: string | null;
   imageKey: string | null;
+  assignedToStaffMemberId: string | null;
+  assignedToId: string | null;
   assigneeId: string | null;
   assigneeName: string | null;
   assigneeAvatarUrl: string | null;

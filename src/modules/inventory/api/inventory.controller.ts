@@ -265,6 +265,7 @@ export class InventoryController {
 
   @Roles(...MANAGE_ROLES)
   @Post("orgs/:orgId/events/:eventId/inventory/apply-kit/:kitId")
+  @HttpCode(200)
   applyKitToEvent(
     @Param("orgId") orgId: string,
     @Param("eventId") eventId: string,

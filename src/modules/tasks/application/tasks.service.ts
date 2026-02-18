@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, ConflictException, Injectable } from "@nestjs/common";
 import {
   AuditActionType,
   AuditEntityType,
@@ -110,8 +110,10 @@ export class TasksService {
       position: task.position,
       imageUrl: task.imageUrl,
       imageKey: task.imageKey,
-      assigneeId: task.assignedToId,
-      assigneeName: task.assignedTo?.fullName ?? task.assignedTo?.email ?? null,
+      assignedToStaffMemberId: task.assignedToStaffMemberId,
+      assignedToId: task.assignedToStaffMemberId,
+      assigneeId: task.assignedToStaffMemberId,
+      assigneeName: task.assignedToStaffMember?.fullName ?? task.assignedToStaffMember?.email ?? null,
       assigneeAvatarUrl: null,
       dueDate: task.dueAt,
       relatedWorkOrderId: task.workOrderId,
@@ -171,9 +173,23 @@ export class TasksService {
     } = params;
 
     if (eventId) await this.repo.assertEventInOrg(eventId, organizationId, tx);
-    if (zoneId) await this.repo.assertZoneInOrg(zoneId, organizationId, tx);
+    if (zoneId) {
+      const zone = await this.repo.getZoneScopeInOrg(zoneId, organizationId, tx);
+      if (eventId && zone.eventId !== eventId) {
+        throw new ConflictException(
+          "zoneId must belong to the same eventId",
+        );
+      }
+    }
     if (improvementId) await this.repo.assertImprovementInOrg(improvementId, organizationId, tx);
-    if (assigneeId) await this.repo.assertAssigneeInOrg(assigneeId, organizationId, tx);
+    if (assigneeId) {
+      await this.repo.assertAssigneeStaffInScope(
+        assigneeId,
+        organizationId,
+        eventId,
+        tx,
+      );
+    }
 
     if (relatedWorkOrderId) {
       const workOrder = await this.repo.getWorkOrderScopeInOrg(
@@ -182,7 +198,7 @@ export class TasksService {
         tx,
       );
       if (eventId && workOrder.eventId !== eventId) {
-        throw new BadRequestException(
+        throw new ConflictException(
           "relatedWorkOrderId must belong to the same eventId",
         );
       }
@@ -195,7 +211,7 @@ export class TasksService {
         tx,
       );
       if (eventId && incident.eventId !== eventId) {
-        throw new BadRequestException(
+        throw new ConflictException(
           "relatedIncidentId must belong to the same eventId",
         );
       }
@@ -208,7 +224,7 @@ export class TasksService {
         tx,
       );
       if (eventId && sponsorship.eventId !== eventId) {
-        throw new BadRequestException(
+        throw new ConflictException(
           "relatedSponsorshipId must belong to the same eventId",
         );
       }
@@ -476,7 +492,7 @@ export class TasksService {
           dueAt: dueDateInput ? new Date(dueDateInput) : null,
           completedAt: status === TaskStatus.DONE ? now : null,
           createdById,
-          assignedToId: assigneeId ?? null,
+          assignedToStaffMemberId: assigneeId ?? null,
           createdAt: now,
           updatedAt: now,
         },
@@ -495,7 +511,7 @@ export class TasksService {
       changes: {
         status: created.status,
         priority: created.priority,
-        assigneeId: created.assignedToId,
+        assigneeId: created.assignedToStaffMemberId,
         position: created.position,
       },
       ip: params.ip ?? null,
@@ -587,7 +603,7 @@ export class TasksService {
         ? data.assigneeId
         : data.assignedToId !== undefined
           ? data.assignedToId
-          : current.assignedToId;
+          : current.assignedToStaffMemberId;
     const nextWorkOrderId =
       data.relatedWorkOrderId !== undefined
         ? data.relatedWorkOrderId
@@ -655,8 +671,8 @@ export class TasksService {
       patch.labels = this.mergeLabels(current.labels, data.relatedLabel);
     }
 
-    if (nextAssigneeId !== current.assignedToId) {
-      patch.assignedToId = nextAssigneeId ?? null;
+    if (nextAssigneeId !== current.assignedToStaffMemberId) {
+      patch.assignedToStaffMemberId = nextAssigneeId ?? null;
     }
 
     if (data.imageUrl !== undefined) {

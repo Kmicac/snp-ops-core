@@ -2,7 +2,8 @@ import { z } from "zod";
 
 export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  PORT: z.coerce.number().int().positive().default(3000),
+  PORT: z.coerce.number().int().positive().default(3001),
+  CORS_ORIGINS: z.string().optional(),
 
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
 
@@ -19,9 +20,10 @@ export const envSchema = z.object({
   S3_BUCKET_NAME: z.string().min(1),
   S3_ENDPOINT: z.string().optional(),
   S3_PUBLIC_BASE_URL: z.string().url().min(1),
+  FILES_ALLOW_DEV_INLINE_FALLBACK: z.string().optional(),
 
   EMAIL_FROM: z.string().email().optional(),
-  RESEND_API_KEY: z.string().optional()
+  RESEND_API_KEY: z.string().optional(),
 });
 
 export type AppEnv = z.infer<typeof envSchema>;

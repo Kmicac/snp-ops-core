@@ -1,9 +1,10 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, ServiceUnavailableException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  type PutObjectCommandInput,
 } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
 import type { UploadFolder } from "./domain/upload-folder";
@@ -19,6 +20,7 @@ export class FilesService {
   private readonly s3: S3Client;
   private readonly bucket: string;
   private readonly publicBaseUrl: string;
+  private readonly allowDevInlineFallback: boolean;
 
   constructor(private readonly config: ConfigService) {
     const filesCfg = this.config.get<{
@@ -36,6 +38,10 @@ export class FilesService {
 
     this.bucket = filesCfg.bucket;
     this.publicBaseUrl = filesCfg.publicBaseUrl;
+    const nodeEnv = this.config.get<string>("NODE_ENV") ?? "development";
+    const fallbackFlag = this.config.get<string>("FILES_ALLOW_DEV_INLINE_FALLBACK");
+    this.allowDevInlineFallback =
+      nodeEnv !== "production" && fallbackFlag !== "false";
 
     this.s3 = new S3Client({
       region: filesCfg.region,
@@ -58,13 +64,8 @@ export class FilesService {
   }
 
   private buildPublicUrl(key: string): string {
-    const base = this.publicBaseUrl.replace(/\/+$/, "");
+    const base = this.publicBaseUrl.replace(/\/+$/g, "");
     return `${base}/${key}`;
-  }
-
-  private buildInlineDataUrl(buffer: Buffer, mimeType: string): string {
-    const safeMimeType = mimeType || "application/octet-stream";
-    return `data:${safeMimeType};base64,${buffer.toString("base64")}`;
   }
 
   async uploadPublicFile(params: {
@@ -78,27 +79,35 @@ export class FilesService {
     const key = this.buildKey(folder, originalName, entityId);
 
     try {
+      const putInput: PutObjectCommandInput = {
+        Bucket: this.bucket,
+        Key: key,
+        Body: buffer,
+        ContentType: mimeType,
+      };
+
       await this.s3.send(
-        new PutObjectCommand({
-          Bucket: this.bucket,
-          Key: key,
-          Body: buffer,
-          ContentType: mimeType,
-          ACL: "public-read",
-        }),
+        new PutObjectCommand(putInput),
       );
 
       const url = this.buildPublicUrl(key);
       this.logger.log(`Uploaded file to S3: ${key}`);
       return { key, url };
     } catch (error) {
-      this.logger.warn(
-        `S3 upload failed, using inline fallback for ${key}: ${error instanceof Error ? error.message : String(error)}`,
+      if (this.allowDevInlineFallback) {
+        this.logger.warn(
+          `S3 upload unavailable, using non-production inline fallback for ${key}`,
+        );
+        return {
+          key: `dev-inline/${key}`,
+          url: `data:${mimeType};base64,${buffer.toString("base64")}`,
+        };
+      }
+
+      this.logger.error(
+        `S3 upload failed for ${key}: ${error instanceof Error ? error.message : String(error)}`,
       );
-      return {
-        key: `inline/${key}`,
-        url: this.buildInlineDataUrl(buffer, mimeType),
-      };
+      throw new ServiceUnavailableException("File storage service unavailable");
     }
   }
 

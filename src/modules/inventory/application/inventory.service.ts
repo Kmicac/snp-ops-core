@@ -890,6 +890,19 @@ export class InventoryService {
       userAgent: params.userAgent ?? null,
     });
 
+    if (assignedCount < 1) {
+      const missingPreview = missingItems
+        .slice(0, 3)
+        .map((item) => `${item.name} x${item.quantity}`)
+        .join(", ");
+
+      throw new ConflictException(
+        missingPreview
+          ? `Kit could not be applied: no inventory available (${missingPreview})`
+          : "Kit could not be applied: no inventory available for required items",
+      );
+    }
+
     return {
       assignedCount,
       missingItems,
@@ -1223,6 +1236,10 @@ export class InventoryService {
         count: row._count._all,
       })),
       recentMovements: recentMovements.map((movement) => ({
+        id: movement.id,
+        assetId: movement.assetId,
+        eventId: movement.eventId,
+        performedByUserId: movement.performedByUserId,
         timestamp: movement.checkoutAt,
         movementType: movement.movementType,
         assetName: movement.assetName,
