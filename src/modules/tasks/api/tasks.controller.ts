@@ -46,6 +46,7 @@ export class TasksController {
       relatedSponsorshipId: dto.relatedSponsorshipId,
       relatedLabel: dto.relatedLabel,
       assigneeId: dto.assigneeId,
+      assigneeStaffMemberId: dto.assigneeStaffMemberId,
       assignedToId: dto.assignedToId,
       workOrderId: dto.workOrderId,
       incidentId: dto.incidentId,
@@ -73,6 +74,7 @@ export class TasksController {
       type: query.types ?? (query.type ? [query.type] : undefined),
       labels: query.labels,
       assigneeId: query.assigneeId ?? query.assignedToId,
+      assigneeStaffMemberId: query.assigneeStaffMemberId,
       search: query.q ?? query.search,
     });
   }
@@ -125,6 +127,7 @@ export class TasksController {
         relatedSponsorshipId: dto.relatedSponsorshipId,
         relatedLabel: dto.relatedLabel,
         assigneeId: dto.assigneeId,
+        assigneeStaffMemberId: dto.assigneeStaffMemberId,
         assignedToId: dto.assignedToId,
         workOrderId: dto.workOrderId,
         incidentId: dto.incidentId,

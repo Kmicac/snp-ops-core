@@ -16,6 +16,7 @@ import { UpdateIncidentStatusDto } from "./dto/update-incident-status.dto";
 import { IncidentStatus, OrgRole } from "@prisma/client";
 import { Roles } from "../../auth/security/roles.decorator";
 import { AddIncidentEvidenceDto } from "./dto/add-incident-evidence.dto";
+import { CreateIncidentTaskDto } from "./dto/create-incident-task.dto";
 
 type AuthenticatedRequest = Request & { user?: { sub?: string } };
 
@@ -163,6 +164,44 @@ export class IncidentsController {
       type: dto.type,
       url: dto.url,
       note: dto.note,
+      performedByUserId: userId,
+      ip,
+      userAgent,
+    });
+  }
+
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
+  @Post(":incidentId/tasks")
+  createTask(
+    @Param("orgId") orgId: string,
+    @Param("eventId") eventId: string,
+    @Param("incidentId") incidentId: string,
+    @Body() dto: CreateIncidentTaskDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    const userId = req.user?.sub ?? null;
+    const ip = req.ip ?? null;
+    const userAgentHeader = req.headers["user-agent"];
+    const userAgent =
+      typeof userAgentHeader === "string" ? userAgentHeader : null;
+
+    return this.service.createTaskFromIncident({
+      organizationId: orgId,
+      eventId,
+      incidentId,
+      title: dto.title,
+      description: dto.description,
+      status: dto.status,
+      priority: dto.priority,
+      dueDate: dto.dueDate,
+      assigneeId: dto.assigneeId,
+      assigneeStaffMemberId: dto.assigneeStaffMemberId,
+      relatedLabel: dto.relatedLabel,
       performedByUserId: userId,
       ip,
       userAgent,

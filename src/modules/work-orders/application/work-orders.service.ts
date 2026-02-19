@@ -1,8 +1,16 @@
-import { Injectable } from "@nestjs/common";
-import { AuditActionType, AuditEntityType, WorkOrderStatus } from "@prisma/client";
+import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  AuditActionType,
+  AuditEntityType,
+  TaskPriority,
+  TaskStatus,
+  TaskType,
+  WorkOrderStatus,
+} from "@prisma/client";
 import { assertWorkOrderTransition } from "../domain/work-order.transitions";
 import { WorkOrdersRepo } from "../infrastructure/work-orders.repo";
 import { AuditService } from "src/modules/audit/application/audit.service";
+import { TasksService } from "src/modules/tasks/application/tasks.service";
 
 function computeDelayMinutes(scheduledEndAt: Date | null, completedAt: Date | null, now: Date) {
   if (!scheduledEndAt) return null;
@@ -17,6 +25,7 @@ export class WorkOrdersService {
   constructor(
     private readonly repo: WorkOrdersRepo,
     private readonly audit: AuditService,
+    private readonly tasks: TasksService,
   ) { }
 
   async create(params: {
@@ -271,5 +280,71 @@ export class WorkOrdersService {
     });
 
     return evidence;
+  }
+
+  async createTaskFromWorkOrder(params: {
+    organizationId: string;
+    eventId: string;
+    workOrderId: string;
+    title?: string;
+    description?: string;
+    status?: TaskStatus;
+    priority?: TaskPriority;
+    dueDate?: string;
+    assigneeId?: string;
+    assigneeStaffMemberId?: string | null;
+    relatedLabel?: string;
+    performedByUserId?: string | null;
+    ip?: string | null;
+    userAgent?: string | null;
+  }) {
+    await this.repo.assertEventInOrg(params.eventId, params.organizationId);
+    const workOrder = await this.repo.getByIdOrThrow(params.workOrderId);
+
+    if (workOrder.eventId !== params.eventId) {
+      throw new NotFoundException("Work order not in event scope");
+    }
+
+    const title = params.title?.trim() || `Follow up: ${workOrder.title}`;
+    const description = params.description?.trim() ?? workOrder.description ?? undefined;
+    const relatedLabel = params.relatedLabel?.trim() || `WO ${workOrder.title}`;
+
+    const task = await this.tasks.createTask({
+      organizationId: params.organizationId,
+      createdById: params.performedByUserId,
+      title,
+      description,
+      type: TaskType.WORK_ORDER,
+      status: params.status,
+      priority: params.priority,
+      dueDate: params.dueDate,
+      eventId: workOrder.eventId,
+      zoneId: workOrder.zoneId ?? undefined,
+      relatedWorkOrderId: workOrder.id,
+      relatedLabel,
+      assigneeId: params.assigneeId,
+      assigneeStaffMemberId: params.assigneeStaffMemberId,
+      ip: params.ip,
+      userAgent: params.userAgent,
+    });
+
+    await this.audit.log({
+      organizationId: params.organizationId,
+      eventId: params.eventId,
+      userId: params.performedByUserId ?? null,
+      entityType: AuditEntityType.WORK_ORDER,
+      entityId: workOrder.id,
+      action: AuditActionType.UPDATED,
+      message: "Task linked to work order",
+      changes: {
+        taskId: task.id,
+        taskStatus: task.status,
+        taskPriority: task.priority,
+      },
+      ip: params.ip ?? null,
+      userAgent: params.userAgent ?? null,
+    });
+
+    return task;
   }
 }

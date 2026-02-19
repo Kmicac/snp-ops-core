@@ -67,6 +67,10 @@ export class UpdateTaskDto {
 
   @IsOptional()
   @IsString()
+  assigneeStaffMemberId?: string | null;
+
+  @IsOptional()
+  @IsString()
   relatedWorkOrderId?: string | null;
 
   @IsOptional()
@@ -89,6 +93,7 @@ export class UpdateTaskDto {
 
   @IsOptional()
   @IsString()
+  // @deprecated: use assigneeStaffMemberId
   assignedToId?: string | null;
 
   @IsOptional()

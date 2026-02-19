@@ -1,18 +1,23 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import {
   AuditActionType,
   AuditEntityType,
   IncidentSeverity,
   IncidentStatus,
+  TaskPriority,
+  TaskStatus,
+  TaskType,
 } from "@prisma/client";
 import { IncidentsRepository } from "../infrastructure/incidents.repo";
 import { AuditRepo } from "../../audit/infrastructure/audit.repo";
+import { TasksService } from "src/modules/tasks/application/tasks.service";
 
 @Injectable()
 export class IncidentsService {
   constructor(
     private readonly repo: IncidentsRepository,
     private readonly audit: AuditRepo,
+    private readonly tasks: TasksService,
   ) {}
 
   async createIncident(args: {
@@ -206,5 +211,71 @@ export class IncidentsService {
     });
 
     return evidence;
+  }
+
+  async createTaskFromIncident(args: {
+    organizationId: string;
+    eventId: string;
+    incidentId: string;
+    title?: string;
+    description?: string;
+    status?: TaskStatus;
+    priority?: TaskPriority;
+    dueDate?: string;
+    assigneeId?: string;
+    assigneeStaffMemberId?: string | null;
+    relatedLabel?: string;
+    performedByUserId?: string | null;
+    ip?: string | null;
+    userAgent?: string | null;
+  }) {
+    await this.repo.assertEventInOrg(args.eventId, args.organizationId);
+    const incident = await this.repo.getByIdOrThrow(args.incidentId);
+
+    if (incident.eventId !== args.eventId) {
+      throw new NotFoundException("Incident not in event scope");
+    }
+
+    const title = args.title?.trim() || `Follow up: ${incident.title}`;
+    const description = args.description?.trim() ?? incident.description;
+    const relatedLabel = args.relatedLabel?.trim() || `INC ${incident.title}`;
+
+    const task = await this.tasks.createTask({
+      organizationId: args.organizationId,
+      createdById: args.performedByUserId,
+      title,
+      description,
+      type: TaskType.INCIDENT,
+      status: args.status,
+      priority: args.priority,
+      dueDate: args.dueDate,
+      eventId: incident.eventId,
+      zoneId: incident.zoneId ?? undefined,
+      relatedIncidentId: incident.id,
+      relatedLabel,
+      assigneeId: args.assigneeId,
+      assigneeStaffMemberId: args.assigneeStaffMemberId,
+      ip: args.ip,
+      userAgent: args.userAgent,
+    });
+
+    await this.audit.createLog({
+      organizationId: args.organizationId,
+      eventId: args.eventId,
+      userId: args.performedByUserId ?? null,
+      entityType: AuditEntityType.INCIDENT,
+      entityId: incident.id,
+      action: AuditActionType.UPDATED,
+      message: "Task linked to incident",
+      changes: {
+        taskId: task.id,
+        taskStatus: task.status,
+        taskPriority: task.priority,
+      },
+      ip: args.ip ?? null,
+      userAgent: args.userAgent ?? null,
+    });
+
+    return task;
   }
 }

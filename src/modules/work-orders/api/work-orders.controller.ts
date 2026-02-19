@@ -3,6 +3,7 @@ import { OrgRole, WorkOrderStatus } from "@prisma/client";
 import { WorkOrdersService } from "../application/work-orders.service";
 import { AddEvidenceDto } from "./dto/add-evidence.dto";
 import { CreateWorkOrderDto } from "./dto/create-work-order.dto";
+import { CreateWorkOrderTaskDto } from "./dto/create-work-order-task.dto";
 import { UpdateWorkOrderDto } from "./dto/update-work-order.dto";
 import { UpdateWorkOrderStatusDto } from "./dto/update-work-order-status.dto";
 import { Roles } from "src/modules/auth/security/roles.decorator";
@@ -73,6 +74,37 @@ export class WorkOrdersController {
     @Param("workOrderId") workOrderId: string,
   ) {
     return this.service.get({ organizationId: orgId, eventId, workOrderId });
+  }
+
+  @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
+  @Post("/orgs/:orgId/events/:eventId/work-orders/:workOrderId/tasks")
+  createTask(
+    @Param("orgId") orgId: string,
+    @Param("eventId") eventId: string,
+    @Param("workOrderId") workOrderId: string,
+    @Body() dto: CreateWorkOrderTaskDto,
+    @Req() req: any,
+  ) {
+    const userId = req.user?.sub ?? null;
+    const ip = req.ip ?? null;
+    const userAgent = req.headers["user-agent"] ?? null;
+
+    return this.service.createTaskFromWorkOrder({
+      organizationId: orgId,
+      eventId,
+      workOrderId,
+      title: dto.title,
+      description: dto.description,
+      status: dto.status,
+      priority: dto.priority,
+      dueDate: dto.dueDate,
+      assigneeId: dto.assigneeId,
+      assigneeStaffMemberId: dto.assigneeStaffMemberId,
+      relatedLabel: dto.relatedLabel,
+      performedByUserId: userId,
+      ip,
+      userAgent: typeof userAgent === "string" ? userAgent : null,
+    });
   }
 
   @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)

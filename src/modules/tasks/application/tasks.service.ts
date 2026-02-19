@@ -15,6 +15,7 @@ import {
   TaskResponseDto,
 } from "../api/dto/task-response.dto";
 import { TaskWithRelations, TasksRepository } from "../infrastructure/tasks.repo";
+import { StaffRepo } from "src/modules/staff/infrastructure/staff.repo";
 
 type MoveTaskResult = {
   previousStatus: TaskStatus;
@@ -31,6 +32,7 @@ export class TasksService {
   constructor(
     private readonly repo: TasksRepository,
     private readonly audit: AuditService,
+    private readonly staffRepo: StaffRepo,
   ) {}
 
   private mapComment(comment: {
@@ -113,6 +115,9 @@ export class TasksService {
       assigneeId: task.assignedToId,
       assigneeName: task.assignedTo?.fullName ?? task.assignedTo?.email ?? null,
       assigneeAvatarUrl: null,
+      assigneeStaffMemberId: task.assignedStaffMemberId,
+      assigneeStaffMemberName: task.assignedStaffMember?.fullName ?? null,
+      assigneeStaffMemberAvatarUrl: null,
       dueDate: task.dueAt,
       relatedWorkOrderId: task.workOrderId,
       relatedIncidentId: task.incidentId,
@@ -147,6 +152,21 @@ export class TasksService {
     return Math.min(Math.max(position, 0), max);
   }
 
+  private async assertStaffMemberInOrg(staffMemberId: string, organizationId: string) {
+    const staffMember = await this.staffRepo.findByIdAndOrganizationId(
+      staffMemberId,
+      organizationId,
+    );
+
+    if (!staffMember) {
+      throw new BadRequestException(
+        "assigneeStaffMemberId must belong to the same organization as the task",
+      );
+    }
+
+    return staffMember;
+  }
+
   private async assertRelations(params: {
     organizationId: string;
     eventId?: string | null;
@@ -156,6 +176,7 @@ export class TasksService {
     improvementId?: string | null;
     relatedSponsorshipId?: string | null;
     assigneeId?: string | null;
+    assigneeStaffMemberId?: string | null;
     tx?: Prisma.TransactionClient;
   }) {
     const {
@@ -167,6 +188,7 @@ export class TasksService {
       improvementId,
       relatedSponsorshipId,
       assigneeId,
+      assigneeStaffMemberId,
       tx,
     } = params;
 
@@ -174,6 +196,9 @@ export class TasksService {
     if (zoneId) await this.repo.assertZoneInOrg(zoneId, organizationId, tx);
     if (improvementId) await this.repo.assertImprovementInOrg(improvementId, organizationId, tx);
     if (assigneeId) await this.repo.assertAssigneeInOrg(assigneeId, organizationId, tx);
+    if (assigneeStaffMemberId) {
+      await this.assertStaffMemberInOrg(assigneeStaffMemberId, organizationId);
+    }
 
     if (relatedWorkOrderId) {
       const workOrder = await this.repo.getWorkOrderScopeInOrg(
@@ -393,6 +418,7 @@ export class TasksService {
     relatedSponsorshipId?: string;
     relatedLabel?: string;
     assigneeId?: string;
+    assigneeStaffMemberId?: string | null;
     assignedToId?: string;
     workOrderId?: string;
     incidentId?: string;
@@ -407,6 +433,7 @@ export class TasksService {
 
     const eventId = params.eventId ?? undefined;
     const assigneeId = params.assigneeId ?? params.assignedToId ?? undefined;
+    const assigneeStaffMemberId = params.assigneeStaffMemberId ?? undefined;
     const relatedWorkOrderId = params.relatedWorkOrderId ?? params.workOrderId ?? undefined;
     const relatedIncidentId = params.relatedIncidentId ?? params.incidentId ?? undefined;
     const relatedSponsorshipId =
@@ -425,6 +452,7 @@ export class TasksService {
       improvementId: params.improvementId,
       relatedSponsorshipId,
       assigneeId,
+      assigneeStaffMemberId,
     });
 
     const status = params.status ?? TaskStatus.TODO;
@@ -477,6 +505,7 @@ export class TasksService {
           completedAt: status === TaskStatus.DONE ? now : null,
           createdById,
           assignedToId: assigneeId ?? null,
+          assignedStaffMemberId: assigneeStaffMemberId ?? null,
           createdAt: now,
           updatedAt: now,
         },
@@ -496,6 +525,7 @@ export class TasksService {
         status: created.status,
         priority: created.priority,
         assigneeId: created.assignedToId,
+        assigneeStaffMemberId: created.assignedStaffMemberId,
         position: created.position,
       },
       ip: params.ip ?? null,
@@ -513,6 +543,7 @@ export class TasksService {
     type?: TaskType[];
     labels?: string[];
     assigneeId?: string;
+    assigneeStaffMemberId?: string;
     search?: string;
   }): Promise<TaskResponseDto[]> {
     const tasks = await this.repo.listTasksByOrg({
@@ -523,6 +554,7 @@ export class TasksService {
       types: params.type,
       labels: params.labels,
       assigneeId: params.assigneeId,
+      assigneeStaffMemberId: params.assigneeStaffMemberId,
       search: params.search,
     });
 
@@ -560,6 +592,7 @@ export class TasksService {
       relatedSponsorshipId?: string | null;
       relatedLabel?: string | null;
       assigneeId?: string | null;
+      assigneeStaffMemberId?: string | null;
       assignedToId?: string | null;
       workOrderId?: string | null;
       incidentId?: string | null;
@@ -588,6 +621,10 @@ export class TasksService {
         : data.assignedToId !== undefined
           ? data.assignedToId
           : current.assignedToId;
+    const nextAssigneeStaffMemberId =
+      data.assigneeStaffMemberId !== undefined
+        ? data.assigneeStaffMemberId
+        : current.assignedStaffMemberId;
     const nextWorkOrderId =
       data.relatedWorkOrderId !== undefined
         ? data.relatedWorkOrderId
@@ -618,6 +655,7 @@ export class TasksService {
       improvementId: nextImprovementId,
       relatedSponsorshipId: nextSponsorshipId,
       assigneeId: nextAssigneeId,
+      assigneeStaffMemberId: nextAssigneeStaffMemberId,
     });
 
     const patch: Prisma.TaskUncheckedUpdateInput = {};
@@ -658,6 +696,9 @@ export class TasksService {
     if (nextAssigneeId !== current.assignedToId) {
       patch.assignedToId = nextAssigneeId ?? null;
     }
+    if (nextAssigneeStaffMemberId !== current.assignedStaffMemberId) {
+      patch.assignedStaffMemberId = nextAssigneeStaffMemberId ?? null;
+    }
 
     if (data.imageUrl !== undefined) {
       patch.imageUrl = data.imageUrl?.trim() ?? null;
@@ -668,6 +709,8 @@ export class TasksService {
     }
 
     const hasNonOrderChanges = Object.keys(patch).length > 0;
+    const assigneeStaffMemberChanged =
+      nextAssigneeStaffMemberId !== current.assignedStaffMemberId;
     const shouldMove = data.status !== undefined || data.position !== undefined;
 
     const result = await this.repo.withTransaction(async (tx) => {
@@ -709,6 +752,19 @@ export class TasksService {
             taskId: params.taskId,
             kind: TaskActivityKind.UPDATE,
             message: "Task updated",
+            createdById: params.performedByUserId ?? null,
+          },
+          tx,
+        );
+      }
+
+      if (assigneeStaffMemberChanged) {
+        await this.repo.createTaskActivity(
+          {
+            organizationId: params.organizationId,
+            taskId: params.taskId,
+            kind: TaskActivityKind.ASSIGNEE_CHANGED,
+            message: `Staff assignee changed from ${current.assignedStaffMemberId ?? "null"} to ${nextAssigneeStaffMemberId ?? "null"}`,
             createdById: params.performedByUserId ?? null,
           },
           tx,

@@ -52,6 +52,9 @@ export type TaskResponseDto = {
   assigneeId: string | null;
   assigneeName: string | null;
   assigneeAvatarUrl: string | null;
+  assigneeStaffMemberId: string | null;
+  assigneeStaffMemberName: string | null;
+  assigneeStaffMemberAvatarUrl: string | null;
   dueDate: Date | null;
   relatedWorkOrderId: string | null;
   relatedIncidentId: string | null;

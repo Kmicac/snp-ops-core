@@ -32,6 +32,12 @@ export class StaffRepo {
     });
   }
 
+  findByIdAndOrganizationId(staffId: string, organizationId: string) {
+    return this.prisma.staffMember.findFirst({
+      where: { id: staffId, organizationId },
+    });
+  }
+
   updateStaffMember(staffId: string, data: Partial<StaffMember>) {
     return this.prisma.staffMember.update({
       where: { id: staffId },

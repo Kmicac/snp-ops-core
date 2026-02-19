@@ -4,15 +4,20 @@ import {
   AuditEntityType,
   ImprovementStatus,
   ImprovementType,
+  TaskPriority,
+  TaskStatus,
+  TaskType,
 } from "@prisma/client";
 import { ImprovementsRepository } from "../infrastructure/improvements.repo";
 import { AuditRepo } from "../../audit/infrastructure/audit.repo";
+import { TasksService } from "src/modules/tasks/application/tasks.service";
 
 @Injectable()
 export class ImprovementsService {
   constructor(
     private readonly repo: ImprovementsRepository,
     private readonly audit: AuditRepo,
+    private readonly tasks: TasksService,
   ) {}
 
   async createImprovement(args: {
@@ -172,5 +177,68 @@ export class ImprovementsService {
     });
 
     return updated;
+  }
+
+  async createTaskFromImprovement(args: {
+    organizationId: string;
+    improvementId: string;
+    title?: string;
+    description?: string;
+    status?: TaskStatus;
+    priority?: TaskPriority;
+    dueDate?: string;
+    assigneeId?: string;
+    assigneeStaffMemberId?: string | null;
+    relatedLabel?: string;
+    performedByUserId?: string | null;
+    ip?: string | null;
+    userAgent?: string | null;
+  }) {
+    const improvement = await this.repo.getByIdOrThrow(
+      args.improvementId,
+      args.organizationId,
+    );
+
+    const title = args.title?.trim() || `Follow up: ${improvement.title}`;
+    const description = args.description?.trim() ?? improvement.description;
+    const relatedLabel = args.relatedLabel?.trim() || `IMP ${improvement.title}`;
+
+    const task = await this.tasks.createTask({
+      organizationId: args.organizationId,
+      createdById: args.performedByUserId,
+      title,
+      description,
+      type: TaskType.GENERAL,
+      status: args.status,
+      priority: args.priority,
+      dueDate: args.dueDate,
+      eventId: improvement.eventId ?? undefined,
+      relatedIncidentId: improvement.incidentId ?? undefined,
+      improvementId: improvement.id,
+      relatedLabel,
+      assigneeId: args.assigneeId,
+      assigneeStaffMemberId: args.assigneeStaffMemberId,
+      ip: args.ip,
+      userAgent: args.userAgent,
+    });
+
+    await this.audit.createLog({
+      organizationId: args.organizationId,
+      eventId: improvement.eventId ?? null,
+      userId: args.performedByUserId ?? null,
+      entityType: AuditEntityType.IMPROVEMENT,
+      entityId: improvement.id,
+      action: AuditActionType.UPDATED,
+      message: "Task linked to improvement",
+      changes: {
+        taskId: task.id,
+        taskStatus: task.status,
+        taskPriority: task.priority,
+      },
+      ip: args.ip ?? null,
+      userAgent: args.userAgent ?? null,
+    });
+
+    return task;
   }
 }

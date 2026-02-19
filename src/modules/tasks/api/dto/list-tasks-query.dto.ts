@@ -58,6 +58,10 @@ export class ListTasksQueryDto {
 
   @IsOptional()
   @IsString()
+  assigneeStaffMemberId?: string;
+
+  @IsOptional()
+  @IsString()
   assignedToId?: string;
 
   @IsOptional()

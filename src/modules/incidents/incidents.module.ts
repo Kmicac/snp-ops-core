@@ -4,8 +4,10 @@ import { IncidentsService } from "./application/incidents.service";
 import { IncidentsRepository } from "./infrastructure/incidents.repo";
 import { PrismaService } from "../../shared/prisma/prisma.service";
 import { AuditRepo } from "../audit/infrastructure/audit.repo";
+import { TasksModule } from "../tasks/tasks.module";
 
 @Module({
+  imports: [TasksModule],
   controllers: [IncidentsController],
   providers: [IncidentsService, IncidentsRepository, PrismaService, AuditRepo],
 })

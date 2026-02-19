@@ -18,6 +18,7 @@ import { ImprovementsService } from "../application/improvements.service";
 import { CreateImprovementDto } from "./dto/create-improvement.dto";
 import { UpdateImprovementDto } from "./dto/update-improvement.dto";
 import { UpdateImprovementStatusDto } from "./dto/update-improvement-status.dto";
+import { CreateImprovementTaskDto } from "./dto/create-improvement-task.dto";
 import { Roles } from "../../auth/security/roles.decorator";
 
 type AuthenticatedRequest = Request & { user?: { sub?: string } };
@@ -135,6 +136,43 @@ export class ImprovementsController {
       organizationId: orgId,
       improvementId,
       data: dto,
+      performedByUserId: userId,
+      ip,
+      userAgent,
+    });
+  }
+
+  @Roles(
+    OrgRole.SUPER_ADMIN,
+    OrgRole.EVENT_DIRECTOR,
+    OrgRole.HR,
+    OrgRole.TECH_SYSTEMS,
+    OrgRole.GUADA,
+  )
+  @Post(":improvementId/tasks")
+  createTask(
+    @Param("orgId") orgId: string,
+    @Param("improvementId") improvementId: string,
+    @Body() dto: CreateImprovementTaskDto,
+    @Req() req: AuthenticatedRequest
+  ) {
+    const user = req.user as any;
+    const userId = user?.sub ?? null;
+    const ip = req.ip ?? null;
+    const uaHeader = req.headers["user-agent"];
+    const userAgent = typeof uaHeader === "string" ? uaHeader : null;
+
+    return this.service.createTaskFromImprovement({
+      organizationId: orgId,
+      improvementId,
+      title: dto.title,
+      description: dto.description,
+      status: dto.status,
+      priority: dto.priority,
+      dueDate: dto.dueDate,
+      assigneeId: dto.assigneeId,
+      assigneeStaffMemberId: dto.assigneeStaffMemberId,
+      relatedLabel: dto.relatedLabel,
       performedByUserId: userId,
       ip,
       userAgent,

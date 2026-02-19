@@ -15,6 +15,7 @@ const taskCommentInclude = Prisma.validator<Prisma.TaskCommentInclude>()({
 export const taskInclude = Prisma.validator<Prisma.TaskInclude>()({
   createdBy: true,
   assignedTo: true,
+  assignedStaffMember: true,
   event: true,
   zone: true,
   workOrder: true,
@@ -63,6 +64,7 @@ type ListTasksParams = {
   priority?: TaskPriority;
   types?: TaskType[];
   assigneeId?: string;
+  assigneeStaffMemberId?: string;
   labels?: string[];
   search?: string;
 };
@@ -184,6 +186,9 @@ export class TasksRepository {
       ...(params.priority ? { priority: params.priority } : {}),
       ...(params.types && params.types.length > 0 ? { type: { in: params.types } } : {}),
       ...(params.assigneeId ? { assignedToId: params.assigneeId } : {}),
+      ...(params.assigneeStaffMemberId
+        ? { assignedStaffMemberId: params.assigneeStaffMemberId }
+        : {}),
       ...(andFilters.length > 0 ? { AND: andFilters } : {}),
     };
 

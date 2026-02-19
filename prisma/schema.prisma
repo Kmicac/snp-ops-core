@@ -205,11 +205,16 @@ enum TaskType {
   SPONSORSHIP
   REFEREE
   INVENTORY
+  POST_EVENT
+  PROVIDER
+  IMPROVEMENT
+  TRAINING
 }
 
 enum TaskActivityKind {
   COMMENT
   UPDATE
+  ASSIGNEE_CHANGED
 }
 
 enum NotificationChannel {
@@ -486,6 +491,7 @@ model StaffMember {
   tatamiReferees TatamiReferee[]
 
   trainingAttendees TrainingAttendee[]
+  tasksAssigned     Task[]             @relation("TaskAssignedStaffMember")
 
   @@index([organizationId])
 }
@@ -684,6 +690,7 @@ model Task {
 
   createdById  String
   assignedToId String?
+  assignedStaffMemberId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -698,6 +705,7 @@ model Task {
 
   createdBy  User  @relation("TaskCreatedBy", fields: [createdById], references: [id])
   assignedTo User? @relation("TaskAssignedTo", fields: [assignedToId], references: [id])
+  assignedStaffMember StaffMember? @relation("TaskAssignedStaffMember", fields: [assignedStaffMemberId], references: [id])
 
   comments  TaskComment[]
   checklist TaskChecklistItem[]
@@ -709,6 +717,7 @@ model Task {
   @@index([eventId])
   @@index([status])
   @@index([assignedToId])
+  @@index([assignedStaffMemberId])
   @@index([workOrderId])
   @@index([incidentId])
   @@index([sponsorshipId])

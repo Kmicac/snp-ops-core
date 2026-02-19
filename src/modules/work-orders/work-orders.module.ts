@@ -4,9 +4,10 @@ import { WorkOrdersController } from "./api/work-orders.controller";
 import { WorkOrdersService } from "./application/work-orders.service";
 import { WorkOrdersRepo } from "./infrastructure/work-orders.repo";
 import { AuditModule } from "../audit/audit.module";
+import { TasksModule } from "../tasks/tasks.module";
 
 @Module({
-  imports: [AuditModule],
+  imports: [AuditModule, TasksModule],
   controllers: [WorkOrdersController],
   providers: [PrismaService, WorkOrdersService, WorkOrdersRepo],
 })
