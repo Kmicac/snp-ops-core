@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import {
   Brand,
   Partnership,
@@ -141,20 +141,44 @@ export class PartnersRepo {
     });
   }
 
+  getApplicationOrThrow(organizationId: string, applicationId: string) {
+    return this.prisma.partnerSponsorApplication.findFirstOrThrow({
+      where: {
+        id: applicationId,
+        organizationId,
+      },
+    });
+  }
+
   updateApplicationStatus(args: {
+    organizationId: string;
     applicationId: string;
     status: PartnerSponsorApplicationStatus;
     reviewedById?: string | null;
     reviewNotes?: string | null;
   }) {
-    return this.prisma.partnerSponsorApplication.update({
-      where: { id: args.applicationId },
-      data: {
-        status: args.status,
-        reviewedById: args.reviewedById ?? null,
-        reviewedAt: new Date(),
-        reviewNotes: args.reviewNotes ?? null,
-      },
+    return this.prisma.$transaction(async (tx) => {
+      const current = await tx.partnerSponsorApplication.findFirst({
+        where: {
+          id: args.applicationId,
+          organizationId: args.organizationId,
+        },
+        select: { id: true },
+      });
+
+      if (!current) {
+        throw new NotFoundException("Application not found");
+      }
+
+      return tx.partnerSponsorApplication.update({
+        where: { id: current.id },
+        data: {
+          status: args.status,
+          reviewedById: args.reviewedById ?? null,
+          reviewedAt: new Date(),
+          reviewNotes: args.reviewNotes ?? null,
+        },
+      });
     });
   }
 

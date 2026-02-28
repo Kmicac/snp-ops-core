@@ -3,6 +3,7 @@ import { z } from "zod";
 export const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(3000),
+  CORS_ORIGINS: z.string().optional(),
 
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
 
@@ -19,6 +20,7 @@ export const envSchema = z.object({
   S3_BUCKET_NAME: z.string().min(1),
   S3_ENDPOINT: z.string().optional(),
   S3_PUBLIC_BASE_URL: z.string().url().min(1),
+  S3_UPLOAD_PUBLIC_READ: z.enum(["true", "false"]).optional(),
 
   EMAIL_FROM: z.string().email().optional(),
   RESEND_API_KEY: z.string().optional()

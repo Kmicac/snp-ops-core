@@ -32,6 +32,11 @@ export class IncidentsService {
     ip?: string | null;
     userAgent?: string | null;
   }) {
+    await this.repo.assertEventInOrg(args.eventId, args.organizationId);
+    if (args.zoneId) {
+      await this.repo.assertZoneInEvent(args.zoneId, args.eventId);
+    }
+
     const incident = await this.repo.createIncident({
       eventId: args.eventId,
       zoneId: args.zoneId,
@@ -46,9 +51,9 @@ export class IncidentsService {
       organizationId: args.organizationId,
       eventId: args.eventId,
       userId: args.reportedByUserId ?? null,
-      entityType: AuditEntityType.INCIDENT, // asegúrate que exista en tu enum
+      entityType: AuditEntityType.INCIDENT, 
       entityId: incident.id,
-      action: AuditActionType.CREATED, // idem
+      action: AuditActionType.CREATED, 
       message: `Incident created: ${incident.title}`,
       changes: {
         title: incident.title,
@@ -62,12 +67,15 @@ export class IncidentsService {
   }
 
   listByEvent(args: {
+    organizationId: string;
     eventId: string;
     status?: IncidentStatus;
   }) {
-    return this.repo.listByEvent(args.eventId, {
-      status: args.status,
-    });
+    return this.repo.assertEventInOrg(args.eventId, args.organizationId).then(() =>
+      this.repo.listByEvent(args.eventId, {
+        status: args.status,
+      }),
+    );
   }
 
   async updateStatus(args: {
@@ -79,7 +87,8 @@ export class IncidentsService {
     ip?: string | null;
     userAgent?: string | null;
   }) {
-    const before = await this.repo.getByIdOrThrow(args.incidentId);
+    await this.repo.assertEventInOrg(args.eventId, args.organizationId);
+    const before = await this.repo.getByIdOrThrow(args.incidentId, args.eventId);
 
     const updated = await this.repo.updateStatus({
       incidentId: args.incidentId,
@@ -187,6 +196,9 @@ export class IncidentsService {
     ip?: string | null;
     userAgent?: string | null;
   }) {
+    await this.repo.assertEventInOrg(args.eventId, args.organizationId);
+    await this.repo.getByIdOrThrow(args.incidentId, args.eventId);
+
     const evidence = await this.repo.addEvidence({
       incidentId: args.incidentId,
       type: args.type,

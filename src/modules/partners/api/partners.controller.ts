@@ -30,6 +30,7 @@ import { Public } from "../../auth/security/public.decorator";
 import { CreatePartnershipDto } from "./dto/create-partnersihp.dto";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
+import { RateLimit } from "src/shared/security/rate-limit.decorator";
 
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const ALLOWED_IMAGE_MIME_TYPES = new Set([
@@ -144,12 +145,14 @@ export class PartnersController {
     }
 
     @Public()
+    @RateLimit({ windowMs: 60_000, max: 120 })
     @Get("public/orgs/:orgId/brands")
     publicListBrands(@Param("orgId") orgId: string) {
         return this.service.listBrands(orgId);
     }
 
     @Public()
+    @RateLimit({ windowMs: 60_000, max: 120 })
     @Get("public/orgs/:orgId/events/:eventId/sponsors")
     publicListSponsors(
         @Param("orgId") orgId: string,
@@ -163,6 +166,7 @@ export class PartnersController {
     }
 
     @Public()
+    @RateLimit({ windowMs: 600_000, max: 20, identifierField: "email" })
     @Post("public/orgs/:orgId/partner-sponsor-applications")
     publicCreateApplication(
         @Param("orgId") orgId: string,
@@ -184,6 +188,7 @@ export class PartnersController {
     @Roles(OrgRole.SUPER_ADMIN, OrgRole.EVENT_DIRECTOR, OrgRole.HR, OrgRole.TECH_SYSTEMS, OrgRole.GUADA)
     @Patch("orgs/:orgId/partner-sponsor-applications/:applicationId/status")
     updateApplicationStatus(
+        @Param("orgId") orgId: string,
         @Param("applicationId") applicationId: string,
         @Body() dto: UpdateApplicationStatusDto,
         @Req() req: AuthenticatedRequest
@@ -192,6 +197,7 @@ export class PartnersController {
         const userId = user?.sub ?? null;
 
         return this.service.updateApplicationStatus({
+            organizationId: orgId,
             applicationId,
             status: dto.status,
             reviewedById: userId,
@@ -200,6 +206,7 @@ export class PartnersController {
     }
 
     @Public()
+    @RateLimit({ windowMs: 60_000, max: 120 })
     @Get("public/orgs/:orgId/events/:eventId/sponsors-by-tier")
     getEventSponsorsByTier(
         @Param("orgId") orgId: string,
@@ -235,6 +242,7 @@ export class PartnersController {
     }
 
     @Public()
+    @RateLimit({ windowMs: 60_000, max: 120 })
     @Get("public/orgs/:orgId/partners")
     getPublicPartners(@Param("orgId") orgId: string) {
         return this.service.getPublicPartners(orgId);

@@ -47,9 +47,12 @@ export class IncidentsRepository {
     });
   }
 
-  async getByIdOrThrow(incidentId: string) {
-    const incident = await this.prisma.incident.findUnique({
-      where: { id: incidentId },
+  async getByIdOrThrow(incidentId: string, eventId?: string) {
+    const incident = await this.prisma.incident.findFirst({
+      where: {
+        id: incidentId,
+        ...(eventId ? { eventId } : {}),
+      },
     });
 
     if (!incident) {

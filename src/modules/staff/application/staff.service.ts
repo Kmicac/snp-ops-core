@@ -291,6 +291,7 @@ export class StaffService {
 
   async revokeCredential(orgId: string, eventId: string, credentialId: string) {
     await this.repo.assertEventInOrg(eventId, orgId);
+    await this.repo.getCredentialInEventOrThrow(credentialId, eventId);
 
     const cred = await this.repo.revokeCredential(credentialId);
 

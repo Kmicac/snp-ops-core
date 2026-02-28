@@ -1,4 +1,8 @@
-import { Injectable, Logger } from "@nestjs/common";
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import {
   S3Client,
@@ -19,6 +23,7 @@ export class FilesService {
   private readonly s3: S3Client;
   private readonly bucket: string;
   private readonly publicBaseUrl: string;
+  private readonly publicReadObjects: boolean;
 
   constructor(private readonly config: ConfigService) {
     const filesCfg = this.config.get<{
@@ -28,6 +33,7 @@ export class FilesService {
       secretAccessKey: string;
       endpoint?: string;
       publicBaseUrl: string;
+      publicReadObjects?: boolean;
     }>("files");
 
     if (!filesCfg) {
@@ -36,6 +42,7 @@ export class FilesService {
 
     this.bucket = filesCfg.bucket;
     this.publicBaseUrl = filesCfg.publicBaseUrl;
+    this.publicReadObjects = filesCfg.publicReadObjects === true;
 
     this.s3 = new S3Client({
       region: filesCfg.region,
@@ -48,23 +55,38 @@ export class FilesService {
     });
   }
 
+  private sanitizePathPart(value: string): string {
+    return value
+      .split("/")
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0 && part !== "." && part !== "..")
+      .map((part) => part.replace(/[^a-zA-Z0-9_-]/g, ""))
+      .filter(Boolean)
+      .join("/");
+  }
+
+  private sanitizeExtension(originalName: string): string {
+    const ext = originalName.split(".").pop()?.toLowerCase() ?? "";
+    if (/^[a-z0-9]{1,10}$/.test(ext)) {
+      return ext;
+    }
+    return "bin";
+  }
+
   private buildKey(folder: string, originalName: string, entityId?: string): string {
-    const cleanFolder = folder.replace(/^\/+|\/+$/g, "");
-    const cleanEntityId = entityId?.replace(/^\/+|\/+$/g, "");
-    const ext = originalName.split(".").pop();
+    const cleanFolder = this.sanitizePathPart(folder);
+    const cleanEntityId = entityId ? this.sanitizePathPart(entityId) : "";
+    const ext = this.sanitizeExtension(originalName);
     const id = randomUUID();
-    const basePath = cleanEntityId ? `${cleanFolder}/${cleanEntityId}` : cleanFolder;
-    return `${basePath}/${id}.${ext ?? "bin"}`;
+    const basePath = cleanEntityId
+      ? `${cleanFolder}/${cleanEntityId}`
+      : cleanFolder;
+    return `${basePath}/${id}.${ext}`;
   }
 
   private buildPublicUrl(key: string): string {
     const base = this.publicBaseUrl.replace(/\/+$/, "");
     return `${base}/${key}`;
-  }
-
-  private buildInlineDataUrl(buffer: Buffer, mimeType: string): string {
-    const safeMimeType = mimeType || "application/octet-stream";
-    return `data:${safeMimeType};base64,${buffer.toString("base64")}`;
   }
 
   async uploadPublicFile(params: {
@@ -84,7 +106,7 @@ export class FilesService {
           Key: key,
           Body: buffer,
           ContentType: mimeType,
-          ACL: "public-read",
+          ...(this.publicReadObjects ? { ACL: "public-read" as const } : {}),
         }),
       );
 
@@ -92,13 +114,10 @@ export class FilesService {
       this.logger.log(`Uploaded file to S3: ${key}`);
       return { key, url };
     } catch (error) {
-      this.logger.warn(
-        `S3 upload failed, using inline fallback for ${key}: ${error instanceof Error ? error.message : String(error)}`,
+      this.logger.error(
+        `S3 upload failed for ${key}: ${error instanceof Error ? error.message : String(error)}`,
       );
-      return {
-        key: `inline/${key}`,
-        url: this.buildInlineDataUrl(buffer, mimeType),
-      };
+      throw new ServiceUnavailableException("File upload failed");
     }
   }
 

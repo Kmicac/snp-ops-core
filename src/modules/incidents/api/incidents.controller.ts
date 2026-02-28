@@ -66,10 +66,12 @@ export class IncidentsController {
   )
   @Get()
   listIncidents(
+    @Param("orgId") orgId: string,
     @Param("eventId") eventId: string,
     @Query("status") status?: IncidentStatus,
   ) {
     return this.service.listByEvent({
+      organizationId: orgId,
       eventId,
       status,
     });

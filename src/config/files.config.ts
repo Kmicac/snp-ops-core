@@ -7,4 +7,5 @@ export const filesConfig = registerAs("files", () => ({
   secretAccessKey: process.env.S3_SECRET_ACCESS_KEY!,
   endpoint: process.env.S3_ENDPOINT || undefined,
   publicBaseUrl: process.env.S3_PUBLIC_BASE_URL!,
+  publicReadObjects: process.env.S3_UPLOAD_PUBLIC_READ === "true",
 }));

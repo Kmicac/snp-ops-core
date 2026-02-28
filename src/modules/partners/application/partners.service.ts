@@ -156,12 +156,14 @@ export class PartnersService {
         return this.repo.listApplications(organizationId, status);
     }
 
-    updateApplicationStatus(args: {
+    async updateApplicationStatus(args: {
+        organizationId: string;
         applicationId: string;
         status: PartnerSponsorApplicationStatus;
         reviewedById?: string | null;
         reviewNotes?: string | null;
     }) {
+        await this.repo.getApplicationOrThrow(args.organizationId, args.applicationId);
         return this.repo.updateApplicationStatus(args);
     }
 

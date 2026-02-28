@@ -6,6 +6,7 @@ import { RegisterDto } from "./dto/register.dto";
 import { Roles } from "../security/roles.decorator";
 import { OrgRole } from "@prisma/client";
 import { Public } from "../security/public.decorator";
+import { RateLimit } from "src/shared/security/rate-limit.decorator";
 
 @Controller()
 export class AuthController {
@@ -23,6 +24,7 @@ export class AuthController {
   }
 
   @Public()
+  @RateLimit({ windowMs: 60_000, max: 10, identifierField: "email" })
   @Post("/auth/login")
   login(@Body() dto: LoginDto) {
     return this.service.login({ email: dto.email, password: dto.password });

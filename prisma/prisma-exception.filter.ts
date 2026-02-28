@@ -15,11 +15,9 @@ export class PrismaExceptionFilter implements ExceptionFilter {
 
     const code = exception.code;
 
-    // Defaults
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let message = "Internal server error";
 
-    // Prisma -> HTTP mapping
     switch (code) {
       case "P2025":
         status = HttpStatus.NOT_FOUND;
@@ -42,15 +40,17 @@ export class PrismaExceptionFilter implements ExceptionFilter {
         break;
     }
 
-    res.status(status).json({
+    const payload: Record<string, unknown> = {
       statusCode: status,
       message,
-      prisma: {
-        code,
-        model: (exception.meta as any)?.modelName,
-      },
       path: req?.url,
       timestamp: new Date().toISOString(),
-    });
+    };
+
+    if (process.env.NODE_ENV !== "production") {
+      payload.errorCode = code;
+    }
+
+    res.status(status).json(payload);
   }
 }

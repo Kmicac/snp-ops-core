@@ -54,6 +54,13 @@ export class ImprovementsRepository {
     });
   }
 
+  async getIncidentScopeInOrg(incidentId: string, organizationId: string) {
+    return this.prisma.incident.findFirstOrThrow({
+      where: { id: incidentId, event: { organizationId } },
+      select: { id: true, eventId: true },
+    });
+  }
+
   listByOrgAndEvent(args: {
     organizationId: string;
     eventId?: string;

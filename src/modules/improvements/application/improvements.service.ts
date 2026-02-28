@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import {
   AuditActionType,
   AuditEntityType,
@@ -32,6 +32,23 @@ export class ImprovementsService {
     ip?: string | null;
     userAgent?: string | null;
   }) {
+    if (args.eventId) {
+      await this.repo.assertEventInOrg(args.eventId, args.organizationId);
+    }
+
+    if (args.incidentId) {
+      const incident = await this.repo.getIncidentScopeInOrg(
+        args.incidentId,
+        args.organizationId,
+      );
+
+      if (args.eventId && incident.eventId !== args.eventId) {
+        throw new BadRequestException(
+          "incidentId must belong to the same eventId",
+        );
+      }
+    }
+
     const improvement = await this.repo.create({
       organizationId: args.organizationId,
       eventId: args.eventId,
@@ -80,6 +97,8 @@ export class ImprovementsService {
     ip?: string | null;
     userAgent?: string | null;
   }) {
+    await this.repo.getByIdOrThrow(args.improvementId, args.organizationId);
+
     const updated = await this.repo.updateStatus({
       improvementId: args.improvementId,
       nextStatus: args.nextStatus,
@@ -208,7 +227,7 @@ export class ImprovementsService {
       createdById: args.performedByUserId,
       title,
       description,
-      type: TaskType.GENERAL,
+      type: TaskType.IMPROVEMENT,
       status: args.status,
       priority: args.priority,
       dueDate: args.dueDate,

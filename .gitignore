@@ -64,6 +64,7 @@ dist/
 # Environment variables
 .env
 .env.*
+!.env.example
 
 # Prisma (MVP stage)
 prisma/migrations/

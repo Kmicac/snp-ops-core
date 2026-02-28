@@ -24,6 +24,7 @@ import { RolesGuard } from "./modules/auth/security/roles.guard";
 import { notificationsConfig } from "./config/notifications.config";
 import { filesConfig } from "./config/files.config";
 import { IncidentsModule } from "./modules/incidents/incidents.module";
+import { RateLimitGuard } from "./shared/security/rate-limit.guard";
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { IncidentsModule } from "./modules/incidents/incidents.module";
     TasksModule,
   ],
   providers: [PrismaService,
+    { provide: APP_GUARD, useClass: RateLimitGuard },
     { provide: APP_GUARD, useClass: JwtAuthGlobalGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
